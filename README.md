@@ -27,7 +27,7 @@ Gereksinimler: Node 20+, yerel bir LLM sunucusu (varsayılan `http://localhost:1
 
 ## Kaynak seçme
 
-Örnek tasarım üç yoldan verilebilir: HTML'i yapıştırmak, dosya seçmek ya da **public_html klasörü seçmek**. Klasör seçilince içindeki sayfalar (alt klasörler dahil, en fazla 25), CSS ve JS dosyaları toplanır; jQuery/Bootstrap gibi hazır kütüphaneler ve `node_modules`, `.git`, `wp-*` klasörleri atlanır. Sayfalar arasında tekrar eden header/footer bir kez sayılır. Seçilen klasör bir WordPress kurulumuysa (PHP), sayfaları tarayıcıda "Farklı kaydet" ile almanız önerilir.
+Örnek tasarım üç yoldan verilebilir: HTML'i yapıştırmak, dosya seçmek ya da **public_html klasörü seçmek**. Klasör seçilince içindeki sayfalar (alt klasörler dahil, en fazla 25), CSS, JS ve medya dosyaları (görsel/video; WordPress kurulumunda `wp-content/uploads`) toplanır. Medya temaya paketlenir, Elementor modunda demo içe aktarılırken Medya Kütüphanesi'ne de eklenir; jQuery/Bootstrap gibi hazır kütüphaneler ve `node_modules`, `.git`, `wp-*` klasörleri atlanır. Sayfalar arasında tekrar eden header/footer bir kez sayılır. Seçilen klasör bir WordPress kurulumuysa (PHP), sayfaları tarayıcıda "Farklı kaydet" ile almanız önerilir.
 
 ## Eklentiler
 
@@ -44,6 +44,10 @@ export function activate(ctx) {
 ```
 
 Eklenti klasörünü **Ayarlar > Eklentiler > Klasör** ile açılan dizine kopyalayın, aynı yerden açın. Eklentiler uygulama içinde tam yetkiyle çalışır ve siz açana kadar kapalıdır; yalnızca güvendiğiniz eklentileri kullanın. API anahtarları işletim sisteminin anahtar deposuyla şifrelenerek saklanır.
+
+## Hata ve token tasarrufu
+
+Tasarımdan bağımsız dosyalar (Elementor modunda `header.php`, `footer.php`, demo JSON'ları) şablondan üretilir, LLM'e gitmez. Modelin sık yaptığı, anlamı belli hatalar (namespace sırası, uydurma Elementor metotları gibi) onarım çağrısı harcanmadan kodla düzeltilir; kalanlar Elementor'un gerçek metot listesine karşı doğrulanıp net mesajla onarıma gider. Her çağrıda yalnızca üretilen dosya türünün kuralları gönderilir ve system mesajı projedeki tüm çağrılarda aynı kalır (önbellek dostu). "Kaldığı yerden devam et", daha önce tamam sayılmış dosyaları da güncel kurallarla yeniden kontrol eder.
 
 ## Paralel ajanlar
 

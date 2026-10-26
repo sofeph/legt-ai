@@ -6,6 +6,7 @@ import type { Browser } from 'playwright-core'
 import { TEMPERATURE, type ChatMessage, type LLMProvider } from '../llm/provider'
 import { extractJson } from '../pipeline/analyze'
 import { extractFileLenient } from '../pipeline/fileBlocks'
+import { autoFix } from '../validate/autofix'
 import { buildFileVars, loadContext, validateAll, type GenContext } from '../pipeline/generate'
 import { inferKind, kebab, pluginDir, preSection, sectionRole, themeDir } from '../pipeline/layout'
 import type { ProjectStore } from '../project/store'
@@ -174,6 +175,13 @@ export async function runLiveTest(opts: LiveTestOptions): Promise<LiveTestResult
     browser = await openBrowser(paths.browsers, log)
 
     const { probes, layout } = buildProbes(ctx)
+    // Yazı sorgulayan bölümler: test sitesine örnek HTML'deki kart başlıklarıyla yazılar eklenir
+    const samplePosts: string[] = []
+    for (const p of probes) {
+      const src = p.files.main ? await ctx.read(p.files.main) : null
+      p.dynamic = !!src && /new\s+\\?WP_Query\b|\bget_posts\s*\(|\bwp_get_recent_posts\s*\(|wp:query\b/.test(src)
+      if (p.dynamic) for (const h of p.headings.slice(1)) if (!samplePosts.includes(h) && samplePosts.length < 8) samplePosts.push(h)
+    }
     const viewports = viewportsFor(ctx)
     const adminPass = randomBytes(9).toString('base64url')
     const T = themeDir(plan)
@@ -212,6 +220,7 @@ export async function runLiveTest(opts: LiveTestOptions): Promise<LiveTestResult
           theme: T,
           prefix: plan.theme.prefix,
           plugins: elementor ? ['elementor/elementor.php', `${P}/${P}.php`] : [],
+          samplePosts,
           ...layout
         })
       )
@@ -331,7 +340,14 @@ export async function runLiveTest(opts: LiveTestOptions): Promise<LiveTestResult
         let errors = '(yok)'
         for (let attempt = 0; attempt <= SCENARIO_RETRIES; attempt++) {
           const user = renderTemplate(testPlanMd, { ...vars, renderedHtml: snapshots[probe.sectionId], js: probe.js, errors, attempt: String(attempt) })
-          const raw = await llmCall(`test-plan-${probe.sectionId}`, system, user, true, probe.label)
+          let raw: string
+          try {
+            raw = await llmCall(`test-plan-${probe.sectionId}`, system, user, true, probe.label)
+          } catch (e) {
+            if (signal?.aborted) throw e
+            log(`${probe.label}: senaryo çağrısı başarısız, bu bölüm senaryosuz test edilecek: ${(e as Error).message.split('\n')[0]}`)
+            break
+          }
           let parsed: { scenarios: Scenario[]; errors: string[] }
           try {
             parsed = parseScenarios(JSON.stringify(extractJson(raw)), probe.sectionId)
@@ -361,13 +377,17 @@ export async function runLiveTest(opts: LiveTestOptions): Promise<LiveTestResult
       const system = renderTemplate(systemMd, vars)
       const rendered = (file.sectionId && snapshots[file.sectionId]) || '(bu dosya tek bir bölüme bağlı değil ya da bölüm render edilmedi)'
       const user = renderTemplate(testRepairMd, { ...vars, attempt: String(round), errors: formatTestIssues(issues), content, renderedHtml: rendered })
-      let fixed = extractFileLenient(await llmCall(`test-repair${round}-${file.path}`, system, user, false, file.path), file.path)
+      const extract = (output: string): string | null => {
+        const raw = extractFileLenient(output, file.path)
+        return raw === null ? null : autoFix(file.path, raw).content
+      }
+      let fixed = extract(await llmCall(`test-repair${round}-${file.path}`, system, user, false, file.path))
       if (fixed === null) {
         // Biçim hatası: aynı isteği işaretçi hatırlatmasıyla bir kez daha
         const reminder = `${user}
 
 ÖNEMLİ: Önceki yanıtın <<<FILE ${file.path}>>> ... <<<END>>> işaretçilerini içermiyordu. Yalnızca bu biçimde, dosyanın tam içeriğiyle yanıt ver.`
-        fixed = extractFileLenient(await llmCall(`test-repair${round}-retry-${file.path}`, system, reminder, false, file.path), file.path)
+        fixed = extract(await llmCall(`test-repair${round}-retry-${file.path}`, system, reminder, false, file.path))
       }
       if (fixed === null) {
         log(`${file.path}: onarım yanıtı iki denemede de biçim dışı, atlandı`)
@@ -380,9 +400,8 @@ export async function runLiveTest(opts: LiveTestOptions): Promise<LiveTestResult
       // Canlı onarım statik doğrulamayı bozmamalı; bozarsa bir kez statik onarım denenir
       let staticIssues = await validateAll(ctx, file, kind, fixed, opts.usePhpLint)
       if (staticIssues.length) {
-        const again = extractFileLenient(
-          await llmCall(`test-repair${round}-static-${file.path}`, system, renderTemplate(repairMd, { ...vars, attempt: '1', errors: formatIssues(file.path, staticIssues), content: fixed }), false, file.path),
-          file.path
+        const again = extract(
+          await llmCall(`test-repair${round}-static-${file.path}`, system, renderTemplate(repairMd, { ...vars, attempt: '1', errors: formatIssues(file.path, staticIssues), content: fixed }), false, file.path)
         )
         if (again !== null) {
           fixed = again
@@ -449,7 +468,15 @@ export async function runLiveTest(opts: LiveTestOptions): Promise<LiveTestResult
         if (signal?.aborted) throw new Error('İptal edildi')
         log(`Onarılıyor: ${f.path}`)
         emit({ type: 'phase', phase: 'repair', round, detail: f.path })
-        if (await repairFile(f, byFile.get(f.path)!, result.snapshots, round)) {
+        // Tek dosyanın LLM hatası (401, kota, bağlantı) testi bitirmez: o dosya atlanır, rapor yine yazılır
+        let ok = false
+        try {
+          ok = await repairFile(f, byFile.get(f.path)!, result.snapshots, round)
+        } catch (e) {
+          if (signal?.aborted) throw e
+          log(`${f.path}: onarım çağrısı başarısız, atlandı: ${(e as Error).message.split('\n')[0]}`)
+        }
+        if (ok) {
           rec.repaired.push(f.path)
           state.files[f.path] = { status: 'ok', attempts: (state.files[f.path]?.attempts ?? 0) + 1 }
         }

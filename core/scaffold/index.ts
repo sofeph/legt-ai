@@ -2,7 +2,7 @@ import { readdir, readFile } from 'node:fs/promises'
 import { join, relative } from 'node:path'
 import { pascalPrefix, widgetClassName } from '../prompts/render'
 import { pluginDir, sectionRole, themeDir } from '../pipeline/layout'
-import type { BlockSection, ElementorSection, Plan, PreAnalysis } from '../types'
+import type { BlockSection, ElementorPlan, ElementorSection, Plan, PreAnalysis } from '../types'
 
 /**
  * LLM'e gitmeyen, şablondan doldurulan dosyalar.
@@ -99,6 +99,10 @@ async function sources(scaffoldDir: string, plan: Plan, pre: PreAnalysis): Promi
     }
     list.push({ out: `${P}/includes/widgets-manifest.php`, from: widgetManifest })
     list.push({ out: `${P}/includes/demo-data.php`, from: demoData })
+    // Demo şablonları plandan: home = içerik widget'ları sırayla, header/footer = kendi widget'ı
+    list.push({ out: `${P}/demo/home.json`, from: (p, pr) => demoJson(p as ElementorPlan, pr, 'home') })
+    if (hasRole(plan, pre, 'header')) list.push({ out: `${P}/demo/header.json`, from: (p, pr) => demoJson(p as ElementorPlan, pr, 'header') })
+    if (hasRole(plan, pre, 'footer')) list.push({ out: `${P}/demo/footer.json`, from: (p, pr) => demoJson(p as ElementorPlan, pr, 'footer') })
     list.push({ out: `${T}/README.md`, from: readme })
     list.push({ out: `${P}/README.md`, from: readme })
   } else {
@@ -157,6 +161,42 @@ return array(
 ${rows.join('\n')}
 );
 `
+}
+
+/** Kararlı 7 haneli hex Elementor kimliği (aynı plan → aynı JSON) */
+function elId(seed: string): string {
+  let h = 0x811c9dc5
+  for (const c of seed) h = Math.imul(h ^ c.charCodeAt(0), 0x01000193) >>> 0
+  return (h & 0xfffffff).toString(16).padStart(7, '0')
+}
+
+/**
+ * demo/{home,header,footer}.json — Elementor şablon formatı. Widget ayarları boş: widget'ın
+ * varsayılanları (örnek HTML'in içeriği) kullanılır, yani demo tam olarak widget'ın kendisidir.
+ */
+function demoJson(plan: ElementorPlan, pre: PreAnalysis, kind: 'home' | 'header' | 'footer'): string {
+  const role = (s: ElementorSection): string => sectionRole(s, pre, s.widget)
+  const firstOf = (r: string): ElementorSection | undefined => plan.sections.find((s) => role(s) === r)
+  const header = firstOf('header')
+  const footer = firstOf('footer')
+  const sections = kind === 'home' ? plan.sections.filter((s) => s !== header && s !== footer) : [kind === 'header' ? header : footer].filter((s): s is ElementorSection => !!s)
+  const content = sections.map((s) => ({
+    id: elId(`${kind}:${s.id}:section`),
+    elType: 'section',
+    settings: { layout: 'full_width', gap: 'no' },
+    elements: [
+      {
+        id: elId(`${kind}:${s.id}:column`),
+        elType: 'column',
+        settings: { _column_size: 100 },
+        elements: [{ id: elId(`${kind}:${s.id}:widget`), elType: 'widget', widgetType: s.widget, settings: {}, elements: [] }],
+        isInner: false
+      }
+    ],
+    isInner: false
+  }))
+  const title = kind === 'home' ? `${plan.theme.name} — Ana sayfa` : `${plan.theme.name} — ${kind === 'header' ? 'Header' : 'Footer'}`
+  return JSON.stringify({ version: '0.4', title, type: kind === 'home' ? 'page' : 'section', content, page_settings: [] }, null, 2) + '\n'
 }
 
 const CSS_COLOR_RE = /^(#[0-9a-f]{3,8}|rgba?([ds.,%]+)|hsla?([ds.,%deg]+))$/i

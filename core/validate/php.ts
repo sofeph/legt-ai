@@ -86,6 +86,26 @@ export async function phpLint(src: string): Promise<ValidationIssue[] | null> {
  * Global fonksiyon / class / namespace önek kontrolü. Yorum ve string'ler atılır,
  * class/fonksiyon gövdesi içindekiler (metotlar, closure'lar) global sayılmaz.
  */
+/**
+ * namespace dosyanın ilk ifadesi olmalı (yalnızca declare önce gelebilir). php -l bunu yakalar,
+ * JS ayrıştırıcısı yakalamaz; php kurulu değilken WordPress'te ölümcül hata veren dosya "tamam" sayılmasın.
+ */
+export function checkNamespaceFirst(src: string): ValidationIssue[] {
+  const seg = phpSegments(src)[0]
+  if (!seg) return []
+  const ns = /^[ \t]*namespace\s+[\w\\]+\s*[;{]/m.exec(seg.code)
+  if (!ns) return []
+  const before = seg.code
+    .slice(0, ns.index)
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(\/\/|#)[^\n]*/g, '')
+    .replace(/declare\s*\([^)]*\)\s*;/g, '')
+    .trim()
+  const leading = src.slice(0, src.indexOf('<?php')).trim()
+  if (!before && !leading) return []
+  return [{ rule: 'php-namespace-first', message: 'namespace satırı dosyanın ilk ifadesi olmalı (ABSPATH kontrolünü namespace\'ten SONRA yazın); aksi halde WordPress ölümcül hata verir', line: lineAt(src, seg.offset + ns.index) }]
+}
+
 export function checkPhpPrefix(src: string, prefix: string): ValidationIssue[] {
   const issues: ValidationIssue[] = []
   const Prefix = prefix.charAt(0).toUpperCase() + prefix.slice(1)

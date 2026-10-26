@@ -63,6 +63,8 @@ describe.skipIf(!enabled)('canlı WordPress testi', () => {
   async function project(plan: Plan): Promise<string> {
     const id = await store.create(intake(plan.mode), pre)
     await store.savePlan(id, plan, 'approved')
+    // public_html'den gelmiş gibi bir medya: üretim temaya paketler, demo içe aktarıcı Medya Kütüphanesi'ne ekler
+    await store.writeBinary(id, 'sources/img/kapak.png', Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==', 'base64'))
     const state = await generate({ provider: fakeProvider(), promptsDir, scaffoldDir, store, projectId: id, numCtx: 8192, usePhpLint: false })
     expect(state.step).toBe('done')
     return id
@@ -115,6 +117,7 @@ describe.skipIf(!enabled)('canlı WordPress testi', () => {
         expect(first.filter((i) => i.message.startsWith('Demo içe aktarma') || i.file?.includes('/demo/')), JSON.stringify(first, null, 2)).toEqual([])
         expect(report.shots.some((s) => s.file.endsWith('demo-desktop.png'))).toBe(true)
         expect(events.some((e) => e.type === 'log' && /Demo içe aktarıldı: .*home.json/.test(e.message))).toBe(true)
+        expect(events.some((e) => e.type === 'log' && /Demo içe aktarıldı: .*1 medya dosyası Medya Kütüphanesi'ne eklendi/.test(e.message))).toBe(true)
       }
       if (mode === 'elementor-free' && !realModel) {
         // Onarım: içerik sorunu olan widget'lar düzeltildi ve ikinci turda o sorunlar kayboldu

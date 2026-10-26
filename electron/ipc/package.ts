@@ -19,7 +19,14 @@ async function loadForPackage(id: string): Promise<{ plan: Plan; pre: PreAnalysi
 export function registerPackageIpc(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle('projects:quality', async (_e, id: string) => {
     const { plan, pre, state } = await loadForPackage(id)
-    return qualityChecklist(plan, pre, state, await readOutputTree(store().safePath(id, 'output')), await loadReport(store(), id))
+    return qualityChecklist(
+      plan,
+      pre,
+      state,
+      await readOutputTree(store().safePath(id, 'output')),
+      await loadReport(store(), id),
+      await store().readJson<{ placeholders: string[] }>(id, 'assets.json')
+    )
   })
 
   ipcMain.handle('projects:export', async (_e, id: string) => {

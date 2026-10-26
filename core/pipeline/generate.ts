@@ -2,11 +2,14 @@ import { readFile } from 'node:fs/promises'
 import { clipText, collectCss, compactHtml, relevantCss } from '../html/relevantCss'
 import { TEMPERATURE, type ChatMessage, type LLMProvider } from '../llm/provider'
 import type { ProjectStore } from '../project/store'
-import { loadPrompt, pascalPrefix, renderTemplate, widgetClassName } from '../prompts/render'
+import { loadPrompt, pascalPrefix, renderTemplate, selectKindRules, widgetClassName } from '../prompts/render'
 import { renderScaffold } from '../scaffold'
 import type { BlockSection, ElementorSection, FileKind, FileStatus, GenEvent, IntakeInput, Plan, PlanFile, PreAnalysis, ProjectState, ValidationIssue } from '../types'
 import { formatIssues, validateFile } from '../validate'
-import { extractFile } from './fileBlocks'
+import { autoFix } from '../validate/autofix'
+import { completeAssets } from './assets'
+import { definedFunctions } from '../validate/functions'
+import { extractFileLenient } from './fileBlocks'
 import { inferKind, orderFiles, preSection } from './layout'
 import { extractSignature } from './signatures'
 import { clampConcurrency, runPool } from '../pool'
@@ -176,8 +179,21 @@ export function checkContract(plan: Plan, file: PlanFile, kind: FileKind, conten
   return issues
 }
 
+/** Projenin (bu dosya dışındaki) PHP dosyalarında tanımlı fonksiyonlar: tanımsız fonksiyon kontrolü için */
+async function projectFunctions(ctx: GenContext, except: string): Promise<string[]> {
+  const out: string[] = []
+  for (const f of ctx.plan.files) {
+    if (f.path === except || !f.path.endsWith('.php')) continue
+    const src = await ctx.read(f.path)
+    if (src) out.push(...definedFunctions(src))
+  }
+  return out
+}
+
 export async function validateAll(ctx: GenContext, file: PlanFile, kind: FileKind, content: string, usePhpLint?: boolean): Promise<ValidationIssue[]> {
-  const base = await validateFile(file.path, content, { mode: ctx.plan.mode, slug: ctx.plan.theme.slug, prefix: ctx.plan.theme.prefix, usePhpLint })
+  // Scaffold deterministik ve testli; tanımsız fonksiyon kontrolü LLM'in yazdığı PHP içindir
+  const fns = file.path.endsWith('.php') && kind !== 'scaffold' ? await projectFunctions(ctx, file.path) : undefined
+  const base = await validateFile(file.path, content, { mode: ctx.plan.mode, slug: ctx.plan.theme.slug, prefix: ctx.plan.theme.prefix, usePhpLint, ...(fns ? { projectFunctions: fns } : {}) })
   return [...base, ...(kind === 'scaffold' ? [] : checkContract(ctx.plan, file, kind, content))]
 }
 
@@ -227,6 +243,31 @@ export async function generate(opts: GenerateOptions): Promise<ProjectState> {
 
   // ---- Scaffold (LLM yok) ----
   const scaffold = await renderScaffold(opts.scaffoldDir, plan, ctx.pre)
+  // Eski planlarda LLM'e verilmiş ama artık şablonu olan dosyalar (header/footer, demo JSON) şablondan
+  // üretilir: daha az LLM çağrısı, wp_head/wp_footer'ı unutan ya da boş demo üreten modele bağımlılık yok
+  const promoted = plan.files.filter((f) => f.source === 'llm' && scaffold.has(f.path))
+  if (promoted.length) {
+    for (const f of promoted) {
+      f.source = 'scaffold'
+      f.kind = 'scaffold'
+      if (state.files[f.path]?.status === 'ok') state.files[f.path] = { status: 'pending', attempts: 0 }
+    }
+    await store.savePlan(id, plan, state.step)
+  }
+
+  // Daha önce "tamam" sayılmış LLM dosyaları: kodla düzeltilebilenler düzeltilir, güncel kurallarla
+  // yeniden doğrulanır. Hâlâ hatalı olan bu çalıştırmada yeniden üretilir; düzelen LLM'e hiç gitmez.
+  if (!opts.only) {
+    for (const f of plan.files.filter((f) => f.source === 'llm' && state.files[f.path]?.status === 'ok')) {
+      const current = await ctx.read(f.path)
+      if (current === null) continue
+      const fixed = autoFix(f.path, current)
+      if (fixed.fixes.length) await store.writeText(id, `output/${f.path}`, fixed.content)
+      const kind = f.kind && f.kind !== 'scaffold' ? f.kind : inferKind(f.path, mode)
+      const issues = await validateAll(ctx, f, kind, fixed.content, opts.usePhpLint)
+      if (issues.length) await setStatus(f.path, 'failed', state.files[f.path].attempts, formatIssues(f.path, issues))
+    }
+  }
   for (const f of plan.files.filter((f) => f.source === 'scaffold')) {
     if (await skip(f)) continue
     const content = scaffold.get(f.path)
@@ -277,13 +318,19 @@ export async function generate(opts: GenerateOptions): Promise<ProjectState> {
       }
     }
 
+    // Toleranslı çıkarım (tek ``` bloğu da kabul; ardından statik doğrulama var) + kodla düzeltilebilen
+    // hatalar: biçim kayması ya da namespace sırası için LLM'e yeniden deneme/onarım çağrısı harcanmaz
+    const extract = (output: string): string | null => {
+      const raw = extractFileLenient(output, f.path)
+      return raw === null ? null : autoFix(f.path, raw).content
+    }
     let content: string | null = null
     let issues: ValidationIssue[] = []
     let attempts = 0
     try {
       opts.onEvent?.({ type: 'phase', path: f.path, phase: 'generate', attempt: 0 })
-      const fileUser = renderTemplate(fileMd, vars)
-      content = extractFile(await call('file', fileUser), f.path)
+      const fileUser = renderTemplate(selectKindRules(fileMd, kind), vars)
+      content = extract(await call('file', fileUser))
       issues = content === null ? [formatIssue(f.path)] : await validateAll(ctx, f, kind, content, opts.usePhpLint)
 
       while (issues.length && attempts < MAX_REPAIRS) {
@@ -291,11 +338,11 @@ export async function generate(opts: GenerateOptions): Promise<ProjectState> {
         opts.onEvent?.({ type: 'phase', path: f.path, phase: 'repair', attempt: attempts })
         if (content === null) {
           // Biçim hatası: aynı dosyayı baştan iste
-          content = extractFile(await call(`file-retry${attempts}`, fileUser), f.path)
+          content = extract(await call(`file-retry${attempts}`, fileUser))
           issues = content === null ? [formatIssue(f.path)] : await validateAll(ctx, f, kind, content, opts.usePhpLint)
         } else {
           const repairUser = renderTemplate(repairMd, { ...vars, attempt: String(attempts), errors: formatIssues(f.path, issues), content })
-          const fixed = extractFile(await call(`repair${attempts}`, repairUser), f.path)
+          const fixed = extract(await call(`repair${attempts}`, repairUser))
           if (fixed === null) issues = [formatIssue(f.path), ...issues.filter((i) => i.rule !== 'format')]
           else {
             content = fixed
@@ -322,6 +369,10 @@ export async function generate(opts: GenerateOptions): Promise<ProjectState> {
     (f) => processFile(f).finally(() => finished.add(f.path)),
     (f) => depsDone(f)
   )
+
+  // Kodun başvurduğu görseller: kaynaklardan kopyala, yoksa yer tutucu (LLM yok, 404 görsel kalmasın)
+  const assets = await completeAssets(store.dir(id), plan)
+  await store.writeJson(id, 'assets.json', assets)
 
   const pending = plan.files.some((f) => !state.files[f.path] || state.files[f.path].status === 'pending' || state.files[f.path].status === 'generating')
   state.step = pending ? 'generating' : 'done'

@@ -99,9 +99,14 @@ export function registerFsIpc(getWindow: () => BrowserWindow | null): void {
     assertIntake(input)
     const s = store()
     const pre = preAnalyze(input.sources)
-    const id = await s.create(input, pre)
+    // Medya ikili dosya olarak sources/ altına yazılır; intake.json'a (her çağrıda okunan) base64 girmez
+    const id = await s.create({ ...input, sources: input.sources.filter((src) => src.kind !== 'media') }, pre)
     // Göreli yol korunur: çok sayfalı sitede "index.html" ile "blog/index.html" çakışmaz
-    for (const src of input.sources) await s.writeText(id, `sources/${safeSourceName(src.name)}`, src.content)
+    for (const src of input.sources) {
+      const rel = `sources/${safeSourceName(src.name)}`
+      if (src.kind === 'media') await s.writeBinary(id, rel, Buffer.from(src.content, 'base64'))
+      else await s.writeText(id, rel, src.content)
+    }
     return id
   })
 

@@ -52,6 +52,14 @@ export class ProjectStore {
     await this.writeText(id, name, JSON.stringify(data, null, 2) + '\n')
   }
 
+  async writeBinary(id: string, rel: string, content: Buffer): Promise<void> {
+    const full = this.safePath(id, rel)
+    await this.serial(full, async () => {
+      await mkdir(dirname(full), { recursive: true })
+      await writeFile(full, content)
+    })
+  }
+
   async writeText(id: string, rel: string, content: string): Promise<void> {
     const full = this.safePath(id, rel)
     await this.serial(full, async () => {

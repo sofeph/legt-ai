@@ -4,7 +4,7 @@
  * Customizer seçimi, ana menü ve Elementor global renk/font'ları.
  *
  * Görünüm > {{name}} Demo sayfasından, etkinleştirme bildiriminden ya da WP-CLI ile:
- *   wp {{prefix}} demo-import [--no-front-page] [--no-menu] [--no-kit]
+ *   wp {{prefix}} demo-import [--no-front-page] [--no-menu] [--no-kit] [--no-media]
  *
  * Tekrar çalıştırılabilir: daha önce içe aktarılan kayıtlar silinmez, güncellenir.
  *
@@ -41,12 +41,12 @@ function {{prefix}}_demo_read( $path ) {
 	$data = json_decode( (string) file_get_contents( $path ), true );
 	if ( ! is_array( $data ) ) {
 		/* translators: 1: dosya adı, 2: JSON hatası */
-		return new WP_Error( 'json', sprintf( esc_html__( '%1$s okunamadı: %2$s', '{{textdomain}}' ), basename( $path ), json_last_error_msg() ) );
+		return new WP_Error( 'json', sprintf( __( '%1$s okunamadı: %2$s', '{{textdomain}}' ), basename( $path ), json_last_error_msg() ) );
 	}
 	$content = isset( $data['content'] ) ? $data['content'] : ( isset( $data[0] ) ? $data : null );
 	if ( ! is_array( $content ) || empty( $content ) ) {
 		/* translators: %s: dosya adı */
-		return new WP_Error( 'empty', sprintf( esc_html__( '%s içinde "content" dizisi yok ya da boş.', '{{textdomain}}' ), basename( $path ) ) );
+		return new WP_Error( 'empty', sprintf( __( '%s içinde "content" dizisi yok ya da boş.', '{{textdomain}}' ), basename( $path ) ) );
 	}
 	$data['content'] = $content;
 	return $data;
@@ -214,7 +214,7 @@ function {{prefix}}_demo_menu( $home_id ) {
 			$id,
 			0,
 			array(
-				'menu-item-title'     => esc_html__( 'Ana Sayfa', '{{textdomain}}' ),
+				'menu-item-title'     => __( 'Ana Sayfa', '{{textdomain}}' ),
 				'menu-item-object'    => 'page',
 				'menu-item-object-id' => $home_id,
 				'menu-item-type'      => 'post_type',
@@ -230,9 +230,98 @@ function {{prefix}}_demo_menu( $home_id ) {
 }
 
 /**
+ * Temayla gelen medyayı (assets/img, assets/images, assets/media) Medya Kütüphanesi'ne ekler.
+ * Tekrar çalıştırılırsa daha önce eklenenler atlanır. WordPress'in izin vermediği türler (ör. SVG) atlanır.
+ *
+ * @return array{added: int, existing: int, skipped: string[], errors: string[]}
+ */
+function {{prefix}}_demo_media() {
+	$result = array(
+		'added'    => 0,
+		'existing' => 0,
+		'skipped'  => array(),
+		'errors'   => array(),
+	);
+	$base = get_theme_root() . '/{{slug}}/assets';
+	$dirs = array();
+	foreach ( array( 'img', 'images', 'media' ) as $sub ) {
+		if ( is_dir( $base . '/' . $sub ) ) {
+			$dirs[] = $base . '/' . $sub;
+		}
+	}
+	if ( ! $dirs ) {
+		return $result;
+	}
+	require_once ABSPATH . 'wp-admin/includes/file.php';
+	require_once ABSPATH . 'wp-admin/includes/image.php';
+	require_once ABSPATH . 'wp-admin/includes/media.php';
+	if ( function_exists( 'set_time_limit' ) ) {
+		@set_time_limit( 0 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors -- çok sayıda görselin küçük boyutları üretilir.
+	}
+
+	$known = array();
+	$ids   = get_posts(
+		array(
+			'post_type'      => 'attachment',
+			'post_status'    => 'inherit',
+			'meta_key'       => {{PREFIX}}_DEMO_META . '_media',
+			'posts_per_page' => -1,
+			'fields'         => 'ids',
+		)
+	);
+	foreach ( $ids as $id ) {
+		$known[ (string) get_post_meta( $id, {{PREFIX}}_DEMO_META . '_media', true ) ] = true;
+	}
+
+	foreach ( $dirs as $dir ) {
+		$files = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $dir, FilesystemIterator::SKIP_DOTS ) );
+		foreach ( $files as $file ) {
+			if ( ! $file->isFile() ) {
+				continue;
+			}
+			$path = wp_normalize_path( $file->getPathname() );
+			$rel  = ltrim( substr( $path, strlen( wp_normalize_path( $base ) ) ), '/' );
+			if ( isset( $known[ $rel ] ) ) {
+				$result['existing']++;
+				continue;
+			}
+			$type = wp_check_filetype( $file->getFilename() );
+			if ( empty( $type['type'] ) ) {
+				$result['skipped'][] = $rel;
+				continue;
+			}
+			$upload = wp_upload_bits( $file->getFilename(), null, (string) file_get_contents( $path ) );
+			if ( ! empty( $upload['error'] ) ) {
+				$result['errors'][] = $rel . ': ' . $upload['error'];
+				continue;
+			}
+			$id = wp_insert_attachment(
+				array(
+					'post_mime_type' => $type['type'],
+					'post_title'     => sanitize_text_field( pathinfo( $file->getFilename(), PATHINFO_FILENAME ) ),
+					'post_status'    => 'inherit',
+				),
+				$upload['file'],
+				0,
+				true
+			);
+			if ( is_wp_error( $id ) ) {
+				$result['errors'][] = $rel . ': ' . $id->get_error_message();
+				continue;
+			}
+			wp_update_attachment_metadata( $id, wp_generate_attachment_metadata( $id, $upload['file'] ) );
+			update_post_meta( $id, {{PREFIX}}_DEMO_META . '_media', $rel );
+			$known[ $rel ] = true;
+			$result['added']++;
+		}
+	}
+	return $result;
+}
+
+/**
  * Demo içeriğini içe aktarır.
  *
- * @param array $args front_page, menu, kit (varsayılan hepsi true).
+ * @param array $args front_page, menu, kit, media (varsayılan hepsi true).
  * @return array{created: string[], warnings: string[], errors: string[], home: int}
  */
 function {{prefix}}_demo_import( $args = array() ) {
@@ -242,6 +331,7 @@ function {{prefix}}_demo_import( $args = array() ) {
 			'front_page' => true,
 			'menu'       => true,
 			'kit'        => true,
+			'media'      => true,
 		)
 	);
 	$report = array(
@@ -252,11 +342,11 @@ function {{prefix}}_demo_import( $args = array() ) {
 	);
 	$files  = {{prefix}}_demo_files();
 	if ( ! $files ) {
-		$report['errors'][] = esc_html__( 'Eklentinin demo/ klasöründe JSON dosyası yok.', '{{textdomain}}' );
+		$report['errors'][] = __( 'Eklentinin demo/ klasöründe JSON dosyası yok.', '{{textdomain}}' );
 		return $report;
 	}
 	if ( ! did_action( 'elementor/loaded' ) && ! defined( 'ELEMENTOR_VERSION' ) ) {
-		$report['warnings'][] = esc_html__( 'Elementor etkin değil: içerik kaydedildi ama Elementor etkinleşene kadar görünmez.', '{{textdomain}}' );
+		$report['warnings'][] = __( 'Elementor etkin değil: içerik kaydedildi ama Elementor etkinleşene kadar görünmez.', '{{textdomain}}' );
 	}
 
 	$known = array();
@@ -276,16 +366,16 @@ function {{prefix}}_demo_import( $args = array() ) {
 		foreach ( array_keys( $types ) as $type ) {
 			if ( 0 === strpos( $type, '{{prefix}}-' ) && ! isset( $known[ $type ] ) ) {
 				/* translators: 1: dosya adı, 2: widget adı */
-				$report['errors'][] = sprintf( esc_html__( '%1$s bilinmeyen widget kullanıyor: %2$s', '{{textdomain}}' ), basename( $path ), $type );
+				$report['errors'][] = sprintf( __( '%1$s bilinmeyen widget kullanıyor: %2$s', '{{textdomain}}' ), basename( $path ), $type );
 			}
 		}
 		if ( ! $types ) {
 			/* translators: %s: dosya adı */
-			$report['warnings'][] = sprintf( esc_html__( '%s hiç widget içermiyor.', '{{textdomain}}' ), basename( $path ) );
+			$report['warnings'][] = sprintf( __( '%s hiç widget içermiyor.', '{{textdomain}}' ), basename( $path ) );
 		}
 
 		$is_layout = 'home' !== $key;
-		$title     = ! empty( $data['title'] ) ? sanitize_text_field( $data['title'] ) : ( $is_layout ? ucfirst( $key ) : esc_html__( 'Ana Sayfa', '{{textdomain}}' ) );
+		$title     = ! empty( $data['title'] ) ? sanitize_text_field( $data['title'] ) : ( $is_layout ? ucfirst( $key ) : __( 'Ana Sayfa', '{{textdomain}}' ) );
 		$id        = {{prefix}}_demo_upsert( $key, $title, $is_layout ? '{{prefix}}_layout' : 'page', $data, $is_layout ? 'wp-post' : 'wp-page' );
 		if ( is_wp_error( $id ) ) {
 			$report['errors'][] = basename( $path ) . ': ' . $id->get_error_message();
@@ -305,23 +395,38 @@ function {{prefix}}_demo_import( $args = array() ) {
 		if ( $args['front_page'] ) {
 			update_option( 'show_on_front', 'page' );
 			update_option( 'page_on_front', $ids['home'] );
-			$report['created'][] = esc_html__( 'Ana sayfa statik ön sayfa yapıldı', '{{textdomain}}' );
+			$report['created'][] = __( 'Ana sayfa statik ön sayfa yapıldı', '{{textdomain}}' );
 		}
 		if ( $args['menu'] ) {
 			$menu = {{prefix}}_demo_menu( $ids['home'] );
 			if ( is_wp_error( $menu ) ) {
 				$report['warnings'][] = $menu->get_error_message();
 			} else {
-				$report['created'][] = esc_html__( 'Ana menü oluşturuldu ve atandı', '{{textdomain}}' );
+				$report['created'][] = __( 'Ana menü oluşturuldu ve atandı', '{{textdomain}}' );
 			}
 		}
 	}
 
 	if ( $args['kit'] ) {
 		if ( {{prefix}}_demo_apply_kit() ) {
-			$report['created'][] = esc_html__( 'Elementor global renk ve fontları ayarlandı', '{{textdomain}}' );
+			$report['created'][] = __( 'Elementor global renk ve fontları ayarlandı', '{{textdomain}}' );
 		} else {
-			$report['warnings'][] = esc_html__( 'Elementor kit\'i bulunamadı; global renkler ayarlanmadı.', '{{textdomain}}' );
+			$report['warnings'][] = __( 'Elementor kit\'i bulunamadı; global renkler ayarlanmadı.', '{{textdomain}}' );
+		}
+	}
+
+	if ( $args['media'] ) {
+		$media = {{prefix}}_demo_media();
+		if ( $media['added'] ) {
+			/* translators: %d: dosya sayısı */
+			$report['created'][] = sprintf( __( '%d medya dosyası Medya Kütüphanesi\'ne eklendi', '{{textdomain}}' ), $media['added'] );
+		}
+		if ( $media['skipped'] ) {
+			/* translators: 1: dosya sayısı, 2: dosya listesi */
+			$report['warnings'][] = sprintf( __( '%1$d dosya türü WordPress\'te yüklemeye kapalı olduğu için eklenmedi (tema içinden kullanılmaya devam eder): %2$s', '{{textdomain}}' ), count( $media['skipped'] ), implode( ', ', array_slice( $media['skipped'], 0, 5 ) ) );
+		}
+		foreach ( $media['errors'] as $line ) {
+			$report['warnings'][] = $line;
 		}
 	}
 
@@ -371,7 +476,7 @@ function {{prefix}}_demo_admin_page() {
 				<?php endif; ?>
 			<?php endforeach; ?>
 			<?php if ( ! empty( $report['home'] ) ) : ?>
-				<p><a class="button" href="<?php echo esc_url( get_permalink( $report['home'] ) ); ?>"><?php echo esc_html__( 'Siteyi görüntüle', '{{textdomain}}' ); ?></a></p>
+				<p><a class="button" href="<?php echo esc_url( get_permalink( $report['home'] ) ); ?>"><?php echo __( 'Siteyi görüntüle', '{{textdomain}}' ); ?></a></p>
 			<?php endif; ?>
 		<?php endif; ?>
 		<p><?php echo esc_html__( 'Dosyalar:', '{{textdomain}}' ); ?> <code><?php echo esc_html( $files ? implode( ', ', array_map( 'basename', $files ) ) : '—' ); ?></code></p>
@@ -389,6 +494,7 @@ function {{prefix}}_demo_admin_page() {
 			<p><label><input type="checkbox" name="front_page" value="1" checked> <?php echo esc_html__( 'Ana sayfayı statik ön sayfa yap', '{{textdomain}}' ); ?></label></p>
 			<p><label><input type="checkbox" name="menu" value="1" checked> <?php echo esc_html__( 'Ana menüyü oluştur', '{{textdomain}}' ); ?></label></p>
 			<p><label><input type="checkbox" name="kit" value="1" checked> <?php echo esc_html__( 'Elementor global renk ve fontlarını ayarla', '{{textdomain}}' ); ?></label></p>
+			<p><label><input type="checkbox" name="media" value="1" checked> <?php echo esc_html__( 'Temayla gelen görsel ve videoları Medya Kütüphanesi\'ne ekle', '{{textdomain}}' ); ?></label></p>
 			<?php submit_button( $imported ? esc_html__( 'Demo içeriğini yeniden içe aktar', '{{textdomain}}' ) : esc_html__( 'Demo içeriğini içe aktar', '{{textdomain}}' ), 'primary', 'submit', true, $files ? array() : array( 'disabled' => 'disabled' ) ); ?>
 		</form>
 	</div>
@@ -405,6 +511,7 @@ function {{prefix}}_demo_handle_import() {
 			'front_page' => ! empty( $_POST['front_page'] ),
 			'menu'       => ! empty( $_POST['menu'] ),
 			'kit'        => ! empty( $_POST['kit'] ),
+			'media'      => ! empty( $_POST['media'] ),
 		)
 	);
 	set_transient( '{{prefix}}_demo_report', $report, 300 );
@@ -459,6 +566,9 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 	 *
 	 * [--no-kit]
 	 * : Elementor global renk/fontlarına dokunma.
+	 *
+	 * [--no-media]
+	 * : Temayla gelen medyayı Medya Kütüphanesi'ne ekleme.
 	 */
 	\WP_CLI::add_command(
 		'{{prefix}} demo-import',
@@ -468,6 +578,7 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 					'front_page' => \WP_CLI\Utils\get_flag_value( $assoc, 'front-page', true ),
 					'menu'       => \WP_CLI\Utils\get_flag_value( $assoc, 'menu', true ),
 					'kit'        => \WP_CLI\Utils\get_flag_value( $assoc, 'kit', true ),
+					'media'      => \WP_CLI\Utils\get_flag_value( $assoc, 'media', true ),
 				)
 			);
 			foreach ( $report['created'] as $line ) {

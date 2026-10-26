@@ -111,7 +111,7 @@ Sohbet tabanlı "devam yaz" akışı yerine uygulama adımları kendisi yönetir
 
 ### ADIM 1 — Intake (LLM yok)
 Kullanıcıdan alınır:
-* Örnek HTML (yapıştır, dosya seç ya da **site klasörü seç**: `public_html` / `dist` gibi bir klasördeki tüm sayfalar + CSS/JS; `core/html/siteFolder.ts` — index önce, en fazla 25 sayfa, hazır kütüphaneler ve `node_modules`/`wp-*` klasörleri atlanır, WordPress kurulumu seçilirse uyarır)
+* Örnek HTML (yapıştır, dosya seç ya da **site klasörü seç**: `public_html` / `dist` gibi bir klasördeki tüm sayfalar + CSS/JS + medya (görsel/video, WordPress kurulumunda `wp-content/uploads`, boyut kopyaları hariç); `core/html/siteFolder.ts` — index önce, en fazla 25 sayfa / 150 medya, hazır kütüphaneler ve `node_modules`/`wp-*` klasörleri atlanır, WordPress kurulumu seçilirse uyarır). Medya `sources/`'a ikili yazılır, `intake.json`'a ve ön analize girmez.
 * Tema adı, slug, önek (ör. `trk`). Önek tüm fonksiyon, class, handle ve text domain'lerde kullanılır. Doğrulama: `^[a-z][a-z0-9_]{1,9}$`
 * Dil, ek istekler (blog, WooCommerce, çok sayfa)
 * Mod: Block Theme veya Elementor Free
@@ -143,6 +143,12 @@ Her dosya üretildikten hemen sonra:
 * JSON (theme.json, Elementor şablonları): `JSON.parse`
 * Yasaklı kalıp taraması: `// ...`, `diğer kodlar`, `_register_controls`, `Scheme_Color`, `Scheme_Typography`, `ElementorPro\`, `TODO`
 * Önek kontrolü: global fonksiyon ve class'lar önekle başlıyor mu
+* `namespace` dosyanın ilk ifadesi mi (`php -l` yoksa da; ABSPATH kontrolü namespace'ten sonra gelir)
+* Elementor widget'larında `$this->x()` / `parent::x()` ya dosyada tanımlı ya da Elementor `Widget_Base` hiyerarşisinde var mı (`core/validate/elementor-widget-api.json`, `node scripts/gen-elementor-api.mjs` ile kurulu Elementor'dan üretilir). Uydurma metot WordPress'te ölümcül hata verip sayfadaki bütün widget'ları düşürür.
+* Tanımsız global fonksiyon (`core/validate/functions.ts`): LLM dosyalarında yalnızca `<?php ?>` blokları (heredoc, dizge, yorum, satır içi JS/CSS hariç) taranır; PHP + WordPress çekirdeği + Elementor'da (`php-functions.json`, `node scripts/gen-php-functions.mjs`), projenin global fonksiyonlarında yoksa ve `function_exists()` ile korunmuyorsa hata. Sınıf metotları global sayılmaz.
+* **Önce kodla düzelt (`core/validate/autofix.ts`):** namespace içinde niteliksiz `WP_Query` / `Exception` / `use` edilmemiş Elementor sınıfları tam adla yazılır; ayrıca aşağıdakiler.
+* **Görseller (`core/pipeline/assets.ts`, üretim sonunda, LLM yok):** kodun başvurduğu `assets/img/...` dosyaları proje kaynaklarından kopyalanır, yoksa doğrulanmış yer tutucu (SVG/PNG/JPEG/WebP/GIF) yazılır ve Export'ta uyarılır; site klasöründen gelen diğer medya `tema/assets/media/` altına paketlenir.
+* **Diğer:** LLM çıktısındaki anlamı belli hatalar (namespace sırası, BOM, iyi bilinen uydurma Elementor metotları) onarım çağrısı harcanmadan düzeltilir. Çıkarım da toleranslıdır (işaretçi yerine tek ``` bloğu kabul edilir; ardından statik doğrulama çalışır). Üretim her başladığında daha önce "tamam" sayılmış dosyalar da bu adımdan ve güncel kurallardan geçer; hâlâ hatalı olanlar yeniden üretilir.
 * Block Theme moduna özel:
   * Her `<!-- wp:x {...} -->` yorumundaki JSON `JSON.parse` ile geçerli olmalı
   * Açılan her blok `<!-- /wp:x -->` ile kapanmalı (yığın tabanlı denge kontrolü)
@@ -175,14 +181,23 @@ Yerel modellerde kaliteyi en çok artıran şey, tasarıma bağlı olmayan dosya
 * Widget kayıt sınıfı (`elementor/widgets/register`, özel kategori), widget dosyalarını `plan.widgets` listesinden otomatik dahil eder
 * `{prefix}_layout` CPT'si + `add_post_type_support($cpt, 'elementor')`
 * Customizer: "Aktif Header / Footer" seçimi, Ek CSS alanı
-* Demo içe aktarıcı (`includes/demo-import.php` + plan token'larından `includes/demo-data.php`): Görünüm > {Tema} Demo sayfası, etkinleştirme bildirimi ve `wp {prefix} demo-import`. `demo/home.json` → statik ön sayfa, `header/footer.json` → layout + Customizer seçimi, ana menü, Elementor kit global renk/font'ları. Tekrar çalıştırılabilir; eksik/yinelenen Elementor id'lerini onarır, bilinmeyen widget'ları raporlar. Canlı test bu içe aktarıcıyı çalıştırıp demo sayfasını da gezer.
+* Demo içe aktarıcı (`includes/demo-import.php` + plan token'larından `includes/demo-data.php`): Görünüm > {Tema} Demo sayfası, etkinleştirme bildirimi ve `wp {prefix} demo-import`. `demo/home.json` → statik ön sayfa, `header/footer.json` → layout + Customizer seçimi, ana menü, Elementor kit global renk/font'ları, temanın `assets/{img,images,media}` dosyaları → Medya Kütüphanesi (tekrar eklenmez; WordPress'in kapattığı türler, ör. SVG, atlanır ve bildirilir). Tekrar çalıştırılabilir; eksik/yinelenen Elementor id'lerini onarır, bilinmeyen widget'ları raporlar. Canlı test bu içe aktarıcıyı çalıştırıp demo sayfasını da gezer.
 * `[{prefix}_template id="x"]` shortcode'u
 * Tema: `style.css` başlığı, `index.php`, `404.php`, `search.php`, Elementor Canvas / Full Width şablonları, eklenti yoksa admin uyarısı
 
 **Block Theme modu:**
 * `style.css` başlığı, temel `functions.php` (enqueue, text domain), `index.html` iskeleti, `parts/` klasör yapısı
 
-LLM yalnızca tasarıma bağlı dosyaları üretir: token CSS'i / `theme.json`, header/footer, widget'lar (PHP + CSS + JS), blok şablonları, demo JSON'ları.
+* Elementor modunda tema `header.php` / `footer.php` (wp_head / wp_body_open / wp_footer, `{prefix}_render_layout()` ve sade yedek header/footer) ve eklentinin `demo/home.json`, `header.json`, `footer.json`'u (plandaki widget'lar, boş ayar = widget varsayılanları, kararlı id'ler). Eski planlarda bunlar LLM'e atanmışsa üretim şablonu tercih eder.
+
+LLM yalnızca tasarıma bağlı dosyaları üretir: token CSS'i / `theme.json`, widget'lar (PHP + CSS + JS), pattern'ler / template part'lar.
+
+### Token / süre / maliyet tasarrufu
+* Tasarımdan bağımsız her dosya scaffold'dur (LLM çağrısı yok).
+* `file.md`'nin "Dosya türüne göre gereksinimler" bölümünden yalnızca üretilen türün `### tür` alt bölümü gönderilir (`selectKindRules`).
+* System mesajı bir projedeki tüm çağrılarda **birebir aynıdır** (`system.md`'de `{{path}}` yok): Ollama önek önbelleği ve bulut sağlayıcıların istem önbelleği bundan yararlanır (sağlayıcı eklentileri system bloğunu önbelleğe işaretleyebilir).
+* Kodla düzeltilebilen hatalar ve biçim kaymaları için onarım / yeniden deneme çağrısı yapılmaz (`autofix.ts`, `extractFileLenient`).
+* Canlı testte bir LLM çağrısının hatası (401, kota) testi durdurmaz; o dosya atlanır, rapor yazılır.
 
 ---
 

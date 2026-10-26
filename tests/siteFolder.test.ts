@@ -32,7 +32,8 @@ describe('scanSiteFolder', () => {
     await put('img/logo.png', 'png')
     const scan = await scanSiteFolder(root)
     // Kök index, sonra bölüm ana sayfaları (alt klasör index'leri), sonra diğer sayfalar
-    expect(scan.sources.map((s) => `${s.kind}:${s.name}`)).toEqual(['html:index.html', 'html:hakkimizda/index.html', 'html:iletisim.html', 'css:css/style.css', 'js:js/main.js'])
+    expect(scan.sources.map((s) => `${s.kind}:${s.name}`)).toEqual(['html:index.html', 'html:hakkimizda/index.html', 'html:iletisim.html', 'css:css/style.css', 'js:js/main.js', 'media:img/logo.png'])
+    expect(Buffer.from(scan.sources.at(-1)!.content, 'base64').toString()).toBe('png')
     expect(scan.skipped.join('\n')).toMatch(/bootstrap\.min\.css \(hazır kütüphane\)/)
     expect(scan.skipped.join('\n')).toMatch(/jquery-3\.7\.1\.min\.js/)
     expect(scan.warnings).toEqual([])
@@ -45,6 +46,19 @@ describe('scanSiteFolder', () => {
     const scan = await scanSiteFolder(root)
     expect(scan.sources).toEqual([])
     expect(scan.warnings.join('\n')).toMatch(/WordPress kurulumu.*Farklı kaydet/)
+  })
+
+  it('WordPress kurulumundan yalnızca uploads medyası alınır; boyut kopyaları ve uploads içindeki kod atlanır', async () => {
+    await put('wp-config.php', '<?php')
+    await put('kayit/index.html', '<h1>Kayıtlı sayfa</h1>')
+    await put('wp-content/uploads/2026/05/kapak.jpg', 'jpg')
+    await put('wp-content/uploads/2026/05/kapak-150x150.jpg', 'kucuk')
+    await put('wp-content/uploads/2026/05/tanitim.mp4', 'mp4')
+    await put('wp-content/uploads/elementor/css/post-1.css', '.x{}')
+    await put('wp-content/themes/x/screenshot.png', 'tema')
+    const scan = await scanSiteFolder(root)
+    expect(scan.sources.map((s) => `${s.kind}:${s.name}`)).toEqual(['html:kayit/index.html', 'media:wp-content/uploads/2026/05/kapak.jpg', 'media:wp-content/uploads/2026/05/tanitim.mp4'])
+    expect(scan.warnings.join('\n')).toMatch(/wp-content\/uploads medyası alındı/)
   })
 
   it('düz PHP sitesi: HTML yoksa PHP sayfaları uyarıyla HTML olarak okunur', async () => {

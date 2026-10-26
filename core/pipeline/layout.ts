@@ -95,7 +95,6 @@ export function buildFiles(plan: Plan, pre: PreAnalysis, scaffoldPaths: string[]
     const P = pluginDir(plan)
     const T = themeDir(plan)
     const names = uniqueNames(plan.sections, (s) => bareName(s.widget || s.id, prefix))
-    const widgetPhp: string[] = []
     for (const s of plan.sections) {
       const n = names.get(s)!
       const php = `${P}/widgets/class-${n}.php`
@@ -103,18 +102,10 @@ export function buildFiles(plan: Plan, pre: PreAnalysis, scaffoldPaths: string[]
       llm(php, 'widget-php', s.id)
       llm(css, 'widget-css', s.id, [php])
       if (s.js && s.js !== 'none') llm(`${P}/assets/js/${n}.js`, 'widget-js', s.id, [php, css])
-      widgetPhp.push(php)
     }
-    const header = plan.sections.find((s) => sectionRole(s, pre, s.widget) === 'header')
-    const footer = plan.sections.find((s) => sectionRole(s, pre, s.widget) === 'footer')
+    // header.php / footer.php ve demo/*.json tasarımdan bağımsız: scaffold üretir (LLM'e gitmez).
+    // LLM'in yazdığı hâlleri wp_head/wp_footer'ı unutuyor, demo JSON'ları boş ya da yanlış widget adlı çıkıyordu.
     llm(`${T}/assets/css/theme.css`, 'theme-css')
-    llm(`${T}/header.php`, 'theme-header', header?.id, [`${T}/assets/css/theme.css`, `${T}/inc/template-functions.php`])
-    llm(`${T}/footer.php`, 'theme-footer', footer?.id, [`${T}/assets/css/theme.css`, `${T}/inc/template-functions.php`])
-    const phpOf = (s: ElementorSection): string => `${P}/widgets/class-${names.get(s)}.php`
-    const content = plan.sections.filter((s) => s !== header && s !== footer)
-    llm(`${P}/demo/home.json`, 'demo-json', undefined, content.map(phpOf))
-    if (header) llm(`${P}/demo/header.json`, 'demo-json', header.id, [phpOf(header)])
-    if (footer) llm(`${P}/demo/footer.json`, 'demo-json', footer.id, [phpOf(footer)])
   } else {
     const T = themeDir(plan)
     const tj = `${T}/theme.json`

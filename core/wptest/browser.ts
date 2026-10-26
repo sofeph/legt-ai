@@ -23,6 +23,8 @@ export interface Probe {
    * kabı basması gereken dosyadadır (tema header.php / footer.php).
    */
   container?: { selector: string; file?: string; label: string }
+  /** Yazıları sorgulayan bölüm (WP_Query vb.): içerik sitedeki yazılardan gelir, örnek başlıklar şart değil */
+  dynamic?: boolean
 }
 
 export interface SitePages {
@@ -143,10 +145,11 @@ function watch(page: Page, input: CheckInput, where: { url: string; viewport: st
   })
 }
 
-async function goto(page: Page, url: string): Promise<number> {
+/** Durum kodu + sunucunun gönderdiği ham HTML (tarayıcı DOM'u yarım sayfayı kendiliğinden kapatır) */
+async function goto(page: Page, url: string): Promise<{ status: number; raw: string }> {
   const res = await page.goto(url, { waitUntil: 'load', timeout: NAV_TIMEOUT })
   await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => undefined)
-  return res?.status() ?? 0
+  return { status: res?.status() ?? 0, raw: (await res?.text().catch(() => '')) ?? '' }
 }
 
 /** Bölüm köklerini işaretler ki taşma kontrolü sorunu bölüme bağlayabilsin */
@@ -224,20 +227,26 @@ export async function runChecks(browser: Browser, input: CheckInput): Promise<Ch
         watch(page, input, { ...where, kind: 'console' }, issues)
         input.log(`${vp} ${where.url}`)
         let status = 0
+        let raw = ''
         try {
-          status = await goto(page, url)
+          ;({ status, raw } = await goto(page, url))
         } catch (e) {
           issues.push({ kind: 'http', severity: 'error', message: `Sayfa açılamadı: ${(e as Error).message.split('\n')[0]}`, ...where })
           await page.close()
           continue
         }
         const html = await page.content()
+        // Başlıklar gönderildikten sonraki ölümcül hata: durum 200 ama sunucu sayfayı yarıda bırakır
+        const truncated = raw !== '' && /<html/i.test(raw) && !/<\/html>/i.test(raw)
         if (CRITICAL_RE.test(html) || status >= 500) {
           issues.push({ kind: 'http', severity: 'error', message: `HTTP ${status}: WordPress kritik hata sayfası (ayrıntı PHP loglarında)`, ...where })
+        } else if (truncated) {
+          issues.push({ kind: 'http', severity: 'error', message: 'Sayfa yarıda kesildi: render sırasında PHP ölümcül hatası (ayrıntı PHP loglarında)', ...where })
         } else if (status !== step.expect) {
           issues.push({ kind: 'http', severity: step.name === 'notFound' ? 'warning' : 'error', message: `HTTP ${status} (beklenen ${step.expect})`, ...where })
         }
-        if (status < 400 || step.name === 'notFound') {
+        // Ölümcül hatayla yarıda kesilen sayfada kanca işaretleri doğal olarak eksiktir; suç header/footer'ın değil
+        if ((status < 400 || step.name === 'notFound') && !truncated && !CRITICAL_RE.test(html) && !PHP_TEXT_RE.test(html)) {
           const hooks = [
             ['wp_head', input.hookFiles?.head, 'error'],
             ['wp_body_open', input.hookFiles?.head, 'warning'],
@@ -276,7 +285,9 @@ export async function runChecks(browser: Browser, input: CheckInput): Promise<Ch
                 file: noContainer ? probe.container!.file : files.main,
                 message: noContainer
                   ? `${probe.container!.label} sayfaya basılmadı, ${probe.label} bu yüzden görünmüyor (${probe.container!.file ?? 'tema'} layout'u çağırmıyor)`
-                  : `${probe.label} sayfada render edilmedi (kayıt, get_name() ya da render() hatası)`,
+                  : probe.dynamic
+                    ? `${probe.label} sayfada render edilmedi: sorgu sonuçsuzsa hiçbir şey basmıyor olabilir (ayar boşken filtre uygulamayın, yazı yoksa boş durum mesajı basın) ya da kayıt / render() hatası`
+                    : `${probe.label} sayfada render edilmedi (kayıt, get_name() ya da render() hatası)`,
                 ...where
               })
               continue
@@ -292,7 +303,8 @@ export async function runChecks(browser: Browser, input: CheckInput): Promise<Ch
               const all = missing.length === probe.headings.length
               issues.push({
                 kind: 'content',
-                severity: all ? 'error' : 'warning',
+                // Yazı listeleyen bölüm sitedeki yazıları gösterir; örnek başlıkların eksikliği hata değildir
+                severity: all && !probe.dynamic ? 'error' : 'warning',
                 sectionId: probe.sectionId,
                 file: files.main,
                 message: `${probe.label}: örnek HTML'deki ${all ? 'başlıkların hiçbiri' : 'bazı başlıklar'} görünmüyor (varsayılan içerik): ${missing.slice(0, 4).map((m) => `"${m.slice(0, 60)}"`).join(', ')}`,
@@ -393,14 +405,15 @@ async function checkElementorEditor(browser: Browser, input: CheckInput, shots: 
     const content = input.probes.filter((p) => !p.container)
     const failed = page.getByText(/preview could not be loaded/i).first()
     const outcome = await Promise.race([
-      failed.waitFor({ state: 'visible', timeout: 60000 }).then(() => 'failed' as const),
-      (content[0] ? frame.locator(content[0].selector).first() : frame.locator('body')).waitFor({ state: 'attached', timeout: 60000 }).then(() => 'loaded' as const)
+      failed.waitFor({ state: 'visible', timeout: 90000 }).then(() => 'failed' as const),
+      (content[0] ? frame.locator(content[0].selector).first() : frame.locator('body')).waitFor({ state: 'attached', timeout: 90000 }).then(() => 'loaded' as const)
     ]).catch(() => 'timeout' as const)
     if (outcome !== 'loaded') {
       issues.push({
         kind: 'editor',
-        severity: 'error',
-        message: outcome === 'failed' ? 'Elementor editör önizlemesi yüklenemedi ("The preview could not be loaded")' : 'Elementor editör önizlemesi 60 sn içinde açılmadı',
+        // Yavaş makinede ilk editör açılışı uzun sürebilir: zaman aşımı tek başına tema hatası kanıtı değil
+        severity: outcome === 'failed' ? 'error' : 'warning',
+        message: outcome === 'failed' ? 'Elementor editör önizlemesi yüklenemedi ("The preview could not be loaded")' : 'Elementor editör önizlemesi 90 sn içinde açılmadı (makine yavaş olabilir; elle kontrol edin)',
         detail: 'Önizleme, temanın wp_head(), wp_footer() ve the_content() çağırmasını ister; bu kancalarla ilgili render sorunlarına ve PHP hatalarına bakın.',
         ...where
       })

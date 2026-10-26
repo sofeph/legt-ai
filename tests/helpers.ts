@@ -58,7 +58,7 @@ export async function blockPlan(withHeader = true): Promise<BlockPlan> {
 export function validContent(user: string, path: string): string {
   if (path.endsWith('.php') && path.includes('/widgets/')) {
     const name = /`get_name\(\)` → `([\w-]+)`/.exec(user)![1]
-    const cls = /class adı `(Widget_\w+)`/.exec(user)![1]
+    const cls = /class adı `(Widget_\w+)`/i.exec(user)![1]
     return `<?php
 namespace Trk\\Widgets;
 

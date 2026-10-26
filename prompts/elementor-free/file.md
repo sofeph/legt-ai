@@ -20,7 +20,8 @@ Dosya türü: {{fileKind}}   <!-- widget-php | widget-css | widget-js | theme-cs
 ## Dosya türüne göre gereksinimler
 
 ### widget-php
-- Namespace: `{{Prefix}}\Widgets`, class adı `Widget_{{WidgetClass}}`, `\Elementor\Widget_Base`'den türer
+- Dosya şöyle başlar (sıra zorunlu): `<?php`, `namespace {{Prefix}}\Widgets;`, `use` satırları, sonra `if ( ! defined( 'ABSPATH' ) ) exit;`
+- Class adı `Widget_{{WidgetClass}}`, `\Elementor\Widget_Base`'den türer
 - `get_name()` → `{{widgetName}}`, `get_categories()` → `['{{prefix}}']`, `get_icon()` uygun bir `eicon-*`
 - `get_style_depends()` → `['{{widgetName}}']`, JS varsa `get_script_depends()` → `['{{widgetName}}']`
 - `register_controls()`:
@@ -54,15 +55,10 @@ Dosya türü: {{fileKind}}   <!-- widget-php | widget-css | widget-js | theme-cs
 - Temel reset, tipografi, `.{{prefix}}-container`, Elementor kapalıyken fallback header/footer stili
 
 ### theme-header / theme-footer
-- Önce Customizer'daki `{{prefix}}_active_header` / `{{prefix}}_active_footer` değerine bak; varsa ve Elementor aktifse `\Elementor\Plugin::$instance->frontend->get_builder_content_for_display( $id )` bas
-- Yoksa kaynak HTML'e benzeyen PHP fallback (`wp_nav_menu`, `the_custom_logo`)
-- `wp_head()`, `wp_body_open()`, `wp_footer()` çağrıları eksiksiz
+- (Yeni projelerde scaffold üretir; eski planlar için) `<?php wp_head(); ?>`, `wp_body_open()`, `wp_footer()` eksiksiz; layout'u `{{prefix}}_render_layout( 'header' )` / `( 'footer' )` ile bas, false dönerse sade PHP fallback
 
 ### demo-json
-- Elementor şablon içe aktarma formatı: `{ "version": "0.4", "title": "", "type": "page", "content": [ ... ] }`
-- Yalnızca Elementor Free çekirdek elemanları (`section`/`container`, `column`) ve `{{prefix}}-*` widget'ları
-- Widget ayarları plan'daki kontrol adlarıyla birebir; her elemana benzersiz 7 karakterlik hex `id`
-- Bu dosyayı eklentinin demo içe aktarıcısı okur (home → ana sayfa, header/footer → layout); `content` boş olamaz, yalnızca bağımlı dosya imzalarındaki `{{prefix}}-*` widget adlarını kullan
+- (Yeni projelerde scaffold üretir) `{ "version": "0.4", "title": "", "type": "page", "content": [ ... ] }`, yalnızca bağımlı dosya imzalarındaki `{{prefix}}-*` widget adları, `content` boş olamaz
 
 ### readme
 - Kurulum: tema zip'i yükle → eklenti zip'ini yükle → Elementor > Şablonlar > İçe Aktar ile JSON'ları al → Layout'lar menüsünde header/footer oluştur → Görünüm > Özelleştir'den seç → Elementor > Site Ayarları'nda Global renk/font'ları kontrol et

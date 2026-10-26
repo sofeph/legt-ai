@@ -5,7 +5,20 @@ import type { FolderScan, IntakeSource } from '../types'
 
 export type { FolderScan } from '../types'
 
-export const FOLDER_LIMITS = { htmlFiles: 25, assetFiles: 40, fileBytes: 1_500_000, totalBytes: 8_000_000, depth: 6 } as const
+export const FOLDER_LIMITS = {
+  htmlFiles: 25,
+  assetFiles: 40,
+  fileBytes: 1_500_000,
+  totalBytes: 8_000_000,
+  depth: 6,
+  // Medya (görsel / video): temaya ve demo içe aktarmada Medya Kütüphanesi'ne gider
+  mediaFiles: 150,
+  mediaFileBytes: 15_000_000,
+  mediaTotalBytes: 80_000_000
+} as const
+const MEDIA_RE = /\.(svg|png|jpe?g|webp|gif|avif|ico|mp4|webm)$/i
+// WordPress'in yüklemede ürettiği boyut kopyaları (foto-150x150.jpg): asıl dosya yeterli
+const WP_SIZE_RE = /-\d+x\d+\.\w+$/
 
 const SKIP_DIRS = new Set(['node_modules', '.git', '.svn', '.idea', '.vscode', 'cgi-bin', 'vendor', 'bower_components', '.well-known', 'wp-admin', 'wp-includes', 'wp-content', 'cache', 'tmp', 'logs', 'error_log'])
 // Hazır kütüphaneler tasarım token'ı taşımaz, LLM bağlamını doldurur
@@ -29,11 +42,12 @@ function htmlOrder(a: string, b: string): number {
  */
 export async function scanSiteFolder(root: string): Promise<FolderScan> {
   const found: { rel: string; kind: IntakeSource['kind']; size: number }[] = []
+  const media: { rel: string; size: number }[] = []
   const php: string[] = []
   const skipped: string[] = []
   const warnings: string[] = []
 
-  const walk = async (dir: string, depth: number): Promise<void> => {
+  const walk = async (dir: string, depth: number, mediaOnly = false): Promise<void> => {
     let entries
     try {
       entries = await readdir(dir, { withFileTypes: true })
@@ -44,15 +58,28 @@ export async function scanSiteFolder(root: string): Promise<FolderScan> {
       const full = join(dir, e.name)
       const rel = relative(root, full).replace(/\\/g, '/')
       if (e.isDirectory()) {
+        // WordPress kurulumunda medya wp-content/uploads altında: yalnızca oraya, yalnızca medya için girilir
+        if (e.name.toLowerCase() === 'wp-content') {
+          if (existsSync(join(full, 'uploads'))) await walk(join(full, 'uploads'), depth + 2, true)
+          continue
+        }
         if (SKIP_DIRS.has(e.name.toLowerCase()) || e.name.startsWith('.')) continue
         if (depth >= FOLDER_LIMITS.depth) {
           skipped.push(`${rel}/ (çok derin)`)
           continue
         }
-        await walk(full, depth + 1)
+        await walk(full, depth + 1, mediaOnly)
         continue
       }
       if (!e.isFile()) continue
+      if (MEDIA_RE.test(e.name)) {
+        if (WP_SIZE_RE.test(e.name)) continue
+        const size = (await stat(full)).size
+        if (size > FOLDER_LIMITS.mediaFileBytes) skipped.push(`${rel} (${Math.round(size / 1_000_000)} MB, medya için çok büyük)`)
+        else media.push({ rel, size })
+        continue
+      }
+      if (mediaOnly) continue
       const ext = extOf(e.name)
       if (ext === '.php') {
         php.push(rel)
@@ -84,7 +111,7 @@ export async function scanSiteFolder(root: string): Promise<FolderScan> {
   if (wordpress) {
     warnings.push(
       htmls.length
-        ? 'Bu klasör bir WordPress kurulumu içeriyor; WordPress dosyaları atlandı, yalnızca statik HTML/CSS/JS alındı.'
+        ? 'Bu klasör bir WordPress kurulumu içeriyor; WordPress dosyaları atlandı, statik HTML/CSS/JS ve wp-content/uploads medyası alındı.'
         : 'Bu klasör bir WordPress kurulumu (PHP); örnek alınacak statik HTML yok. Sitenin sayfalarını tarayıcıda "Farklı kaydet > Web sayfası, tamamı" ile kaydedip o klasörü seçin.'
     )
   }
@@ -108,6 +135,18 @@ export async function scanSiteFolder(root: string): Promise<FolderScan> {
     }
     total += content.length
     sources.push({ name: f.rel, kind: f.kind, content })
+  }
+  // Medya: kaynak HTML'e değil temaya (assets/) ve demo içe aktarmada Medya Kütüphanesi'ne gider
+  let mediaTotal = 0
+  let mediaCount = 0
+  for (const f of media.sort((a, b) => a.rel.localeCompare(b.rel))) {
+    if (mediaCount >= FOLDER_LIMITS.mediaFiles || mediaTotal + f.size > FOLDER_LIMITS.mediaTotalBytes) {
+      skipped.push(`${f.rel} (medya sınırı)`)
+      continue
+    }
+    mediaTotal += f.size
+    mediaCount++
+    sources.push({ name: f.rel, kind: 'media', content: (await readFile(join(root, f.rel))).toString('base64') })
   }
   if (!sources.some((s) => s.kind === 'html') && !wordpress) warnings.push('Seçilen klasörde HTML sayfası bulunamadı.')
   return { root, sources, skipped, warnings }

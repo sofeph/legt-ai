@@ -85,7 +85,9 @@ export default function Intake(): JSX.Element {
   // Ön analiz (LLM'siz) — yazarken canlı
   useEffect(() => {
     if (!sources.some((s) => s.kind === 'html')) return setPre(null)
-    const t = setTimeout(() => void window.legt.html.preAnalyze(sources).then(setPre).catch(() => setPre(null)), 400)
+    // Medya ön analize girmez (yalnızca HTML/CSS/JS); base64 içerik her tuşta IPC'den gitmesin
+    const text = sources.filter((s) => s.kind !== 'media')
+    const t = setTimeout(() => void window.legt.html.preAnalyze(text).then(setPre).catch(() => setPre(null)), 400)
     return () => clearTimeout(t)
   }, [sources])
 
@@ -196,7 +198,7 @@ export default function Intake(): JSX.Element {
                 <div className="flex items-center gap-1">
                   <GlobeRegular /> <span style={{ fontFamily: 'Consolas, "Cascadia Code", monospace' }}>{folder.root}</span>
                 </div>
-                {files.filter((f) => f.kind === 'html').length} sayfa, {files.filter((f) => f.kind === 'css').length} CSS, {files.filter((f) => f.kind === 'js').length} JS alındı
+                {files.filter((f) => f.kind === 'html').length} sayfa, {files.filter((f) => f.kind === 'css').length} CSS, {files.filter((f) => f.kind === 'js').length} JS, {files.filter((f) => f.kind === 'media').length} medya alındı
                 {folder.skipped.length > 0 && ` · ${folder.skipped.length} dosya atlandı`}
                 {folder.warnings.map((w) => (
                   <div key={w}>{w}</div>
@@ -207,11 +209,18 @@ export default function Intake(): JSX.Element {
           )}
           {files.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {files.map((f, i) => (
-                <Badge key={i} appearance="outline" icon={<DismissRegular onClick={() => setFiles(files.filter((_, j) => j !== i))} />} iconPosition="after">
-                  {f.kind.toUpperCase()} · {f.name}
+              {files.map((f, i) =>
+                f.kind === 'media' ? null : (
+                  <Badge key={i} appearance="outline" icon={<DismissRegular onClick={() => setFiles(files.filter((_, j) => j !== i))} />} iconPosition="after">
+                    {f.kind.toUpperCase()} · {f.name}
+                  </Badge>
+                )
+              )}
+              {files.some((f) => f.kind === 'media') && (
+                <Badge appearance="tint" icon={<DismissRegular onClick={() => setFiles(files.filter((f) => f.kind !== 'media'))} />} iconPosition="after">
+                  {files.filter((f) => f.kind === 'media').length} medya dosyası (temaya ve Medya Kütüphanesi'ne)
                 </Badge>
-              ))}
+              )}
             </div>
           )}
           <Textarea

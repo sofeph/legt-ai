@@ -136,6 +136,24 @@ $legt_pages['post']     = get_permalink( 1 );
 $legt_pages['search']   = home_url( '/?s=lorem' );
 $legt_pages['notFound'] = home_url( '/?p=987654' );
 
+// Yazı listeleyen widget'lar için örnek yazılar (başlıklar örnek HTML'den), tek kategori altında
+if ( ! empty( $legt_cfg['samplePosts'] ) ) {
+	$cat = wp_insert_term( 'Genel İpuçları', 'category' );
+	$cat = is_wp_error( $cat ) ? (int) get_cat_ID( 'Genel İpuçları' ) : (int) $cat['term_id'];
+	foreach ( $legt_cfg['samplePosts'] as $i => $title ) {
+		wp_insert_post(
+			array(
+				'post_title'    => wp_slash( $title ),
+				'post_content'  => wp_slash( '<p>' . esc_html( $title ) . ' — LEGT AI test yazısı. Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>' ),
+				'post_excerpt'  => wp_slash( 'LEGT AI test yazısı: ' . $title ),
+				'post_status'   => 'publish',
+				'post_category' => array( $cat ),
+				'post_date'     => gmdate( 'Y-m-d H:i:s', time() - ( $i + 1 ) * DAY_IN_SECONDS ),
+			)
+		);
+	}
+}
+
 if ( 'elementor-free' === $legt_cfg['mode'] ) {
 	$el                   = $legt_cfg['elementor'];
 	$test_id              = legt_elementor_post( 'LEGT Test', 'page', $el['content'], 'wp-page' );

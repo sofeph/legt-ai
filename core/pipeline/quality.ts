@@ -26,7 +26,14 @@ function grep(files: Map<string, string>, re: RegExp, filter: (path: string) => 
 }
 
 /** docs/MIMARI.md'deki kalite kontrol listesi — Export ekranında gösterilir */
-export function qualityChecklist(plan: Plan, pre: PreAnalysis, state: ProjectState, files: Map<string, string>, report?: TestReport | null): QualityItem[] {
+export function qualityChecklist(
+  plan: Plan,
+  pre: PreAnalysis,
+  state: ProjectState,
+  files: Map<string, string>,
+  report?: TestReport | null,
+  assets?: { placeholders: string[] } | null
+): QualityItem[] {
   const { prefix, textdomain } = plan.theme
   const elementor = plan.mode === 'elementor-free'
   const isPhp = (p: string): boolean => p.endsWith('.php')
@@ -77,6 +84,12 @@ export function qualityChecklist(plan: Plan, pre: PreAnalysis, state: ProjectSta
     item('validation', "Tüm PHP dosyaları php -l'den geçti, tüm JSON'lar parse ediliyor", validation),
     item('escape', 'Escape ve çeviri fonksiyonları eksiksiz', [...escape.map((e) => `escape edilmemiş echo: ${e}`), ...domains], true),
     item('prefix', 'Önek tüm global isimlerde kullanılmış', prefixProblems),
+    item(
+      'assets',
+      'Görseller temada (yer tutucu yok)',
+      (assets?.placeholders ?? []).map((p) => `${p}: kaynakta bulunamadı, yer tutucu yazıldı — gerçek görseli bu yola koyun`),
+      true
+    ),
     liveTestItem(report, state)
   ]
 }

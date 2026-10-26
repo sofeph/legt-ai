@@ -15,7 +15,8 @@ export interface ThemeIdentity {
 export interface IntakeSource {
   /** Dosya adı (yapıştırılan içerik için "pasted.html") */
   name: string
-  kind: 'html' | 'css' | 'js'
+  /** media: görsel / video (content base64; projeye ikili yazılır, intake.json'a girmez) */
+  kind: 'html' | 'css' | 'js' | 'media'
   content: string
 }
 

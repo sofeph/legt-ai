@@ -28,12 +28,16 @@ Yerine:
 - Asset'ler `get_style_depends()` / `get_script_depends()` ile
 - JS: `elementorFrontend.hooks.addAction('frontend/element_ready/{widget}.default', fn)`, vanilla JS, slider için Elementor'un Swiper'ı
 - Escape: `esc_html`, `esc_attr`, `esc_url`, `wp_kses_post`. Tüm stringler `__()` / `esc_html__()` ile, text domain `{{textdomain}}`
-- Her PHP dosyası `if ( ! defined( 'ABSPATH' ) ) exit;` ile başlar
+- Her PHP dosyasında `if ( ! defined( 'ABSPATH' ) ) exit;` bulunur. Dosyada `namespace` varsa sıra: `<?php` → `namespace ...;` → `use ...;` → ABSPATH kontrolü (namespace'ten önce kod yazmak ölümcül PHP hatasıdır)
 - CSS sınıfları `{{prefix}}-` önekli, token'lar `var(--e-global-color-primary, #xxxxxx)` biçiminde fallback'li
 
 ## Çıktı biçimi
-Dosya istendiğinde YALNIZCA şunu döndür, öncesinde ve sonrasında hiçbir metin olmasın:
+Dosya istendiğinde YALNIZCA şunu döndür (yol, istekte verilen dosya yolu), öncesinde ve sonrasında hiçbir metin olmasın:
 
-<<<FILE {{path}}>>>
+<<<FILE dosya/yolu>>>
 (dosyanın tam ve eksiksiz içeriği)
 <<<END>>>
+
+<!-- {{path}} burada kullanılmaz: system mesajı projedeki her çağrıda birebir aynı kalsın ki
+     Ollama önek önbelleğini ve bulut sağlayıcıların istem önbelleğini kullanabilsin (süre ve para tasarrufu). -->
+

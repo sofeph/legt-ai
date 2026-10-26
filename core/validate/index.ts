@@ -2,7 +2,9 @@ import { Script } from 'node:vm'
 import type { Mode, ValidationIssue } from '../types'
 import { checkBlockMarkup, checkNoPhp, checkPatternHeader, checkRawHex } from './blocks'
 import { checkBracketBalance, checkForbidden } from './common'
-import { checkPhpLight, checkPhpPrefix, checkPhpSyntax, phpLint } from './php'
+import { checkElementorApi } from './elementor'
+import { checkUndefinedFunctions } from './functions'
+import { checkNamespaceFirst, checkPhpLight, checkPhpPrefix, checkPhpSyntax, phpLint } from './php'
 
 export interface ValidateContext {
   mode: Mode
@@ -10,6 +12,8 @@ export interface ValidateContext {
   prefix: string
   /** false ise php kurulu olsa bile php -l atlanır (testler için) */
   usePhpLint?: boolean
+  /** Projenin diğer PHP dosyalarında tanımlı fonksiyonlar; verilmezse tanımsız fonksiyon kontrolü yapılmaz */
+  projectFunctions?: Iterable<string>
 }
 
 export function checkJson(src: string): ValidationIssue[] {
@@ -41,6 +45,7 @@ export async function validateFile(path: string, content: string, ctx: ValidateC
   const ext = p.slice(p.lastIndexOf('.') + 1).toLowerCase()
   const isBlockMarkup = ctx.mode === 'block-theme' && /\/(templates|parts)\/[^/]+\.html$/.test(p)
   const isPattern = ctx.mode === 'block-theme' && /\/patterns\/[^/]+\.php$/.test(p)
+  const isWidget = ctx.mode === 'elementor-free' && /-elementor-widgets\/widgets\/[^/]+\.php$/.test(p)
 
   if (!content.trim()) return [{ rule: 'empty', message: 'Dosya boş' }]
   if (ext !== 'md') issues.push(...checkForbidden(content))
@@ -50,7 +55,11 @@ export async function validateFile(path: string, content: string, ctx: ValidateC
       const lint = ctx.usePhpLint === false ? null : await phpLint(content)
       // php -l yoksa: açılış etiketi + JS ayrıştırıcı ile tam sözdizimi kontrolü
       issues.push(...(lint ?? [...checkPhpLight(content).filter((i) => i.rule === 'php-open-tag'), ...checkPhpSyntax(content)]))
+      // php -l varsa bunu zaten yakalar; çift raporlanmasın
+      if (!lint?.some((i) => /namespace/i.test(i.message))) issues.push(...checkNamespaceFirst(content))
       issues.push(...checkPhpPrefix(content, ctx.prefix))
+      if (isWidget) issues.push(...checkElementorApi(content))
+      if (ctx.projectFunctions) issues.push(...checkUndefinedFunctions(content, ctx.projectFunctions))
       if (isPattern) {
         issues.push(...checkPatternHeader(content, ctx.slug), ...checkBlockMarkup(content), ...checkRawHex(content))
       }

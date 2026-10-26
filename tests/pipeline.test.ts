@@ -20,11 +20,28 @@ describe('normalizePlan + buildFiles', () => {
     expect(llm).toContain('turkuaz-elementor-widgets/widgets/class-hero.php')
     expect(llm).toContain('turkuaz-elementor-widgets/assets/js/testimonials.js')
     expect(llm).not.toContain('turkuaz-elementor-widgets/assets/js/hero.js')
-    expect(llm).toEqual(expect.arrayContaining(['turkuaz/header.php', 'turkuaz/footer.php', 'turkuaz/assets/css/theme.css', 'turkuaz-elementor-widgets/demo/home.json']))
+    expect(llm).toContain('turkuaz/assets/css/theme.css')
+    // Tasarımdan bağımsız: şablondan üretilir, LLM'e gitmez
+    const scaffold = plan.files.filter((f) => f.source === 'scaffold').map((f) => f.path)
+    expect(scaffold).toEqual(expect.arrayContaining(['turkuaz/header.php', 'turkuaz/footer.php', 'turkuaz-elementor-widgets/demo/home.json', 'turkuaz-elementor-widgets/demo/header.json', 'turkuaz-elementor-widgets/demo/footer.json']))
+    expect(llm.filter((p) => scaffold.includes(p))).toEqual([])
     const css = plan.files.find((f) => f.path.endsWith('css/hero.css'))!
     expect(css.dependsOn).toEqual(['turkuaz-elementor-widgets/widgets/class-hero.php'])
-    const home = plan.files.find((f) => f.path.endsWith('demo/home.json'))!
-    expect(home.dependsOn).toHaveLength(4) // header/footer hariç içerik widget'ları
+  })
+
+  it('Elementor demo JSON\'ları plandan: home içerik widget\'ları, header/footer kendi widget\'ı, kararlı id\'ler', async () => {
+    const plan = await elementorPlan()
+    const files = await renderScaffold(scaffoldDir, plan, pre)
+    const widgets = (path: string): string[] => {
+      const out: string[] = []
+      const walk = (els: { widgetType?: string; elements?: unknown[] }[]): void => els.forEach((e) => (e.widgetType && out.push(e.widgetType), walk((e.elements ?? []) as never)))
+      walk(JSON.parse(files.get(`turkuaz-elementor-widgets/demo/${path}`)!).content)
+      return out
+    }
+    expect(widgets('home.json')).toEqual(['trk-hero', 'trk-features', 'trk-testimonials', 'trk-faq'])
+    expect(widgets('header.json')).toEqual(['trk-header'])
+    expect(widgets('footer.json')).toEqual(['trk-footer'])
+    expect((await renderScaffold(scaffoldDir, plan, pre)).get('turkuaz-elementor-widgets/demo/home.json')).toBe(files.get('turkuaz-elementor-widgets/demo/home.json'))
   })
 
   it('Block: header/footer parça, diğerleri pattern; slug ve className tutarlı', async () => {
@@ -188,7 +205,7 @@ describe('generate', () => {
     await run(id, again)
     expect(again.calls).toHaveLength(0)
     const one = fakeProvider()
-    await run(id, one, { only: ['turkuaz/header.php'] })
+    await run(id, one, { only: ['turkuaz/assets/css/theme.css'] })
     expect(one.calls).toHaveLength(1)
   })
 
