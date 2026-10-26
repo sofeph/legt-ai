@@ -1,0 +1,93 @@
+{
+  "name": "legt-ai",
+  "version": "0.1.0",
+  "description": "LEGT AI — Libre Extra Gratis Theme AI: yerel LLM ile WordPress tema üretici",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "node scripts/electron-run.mjs dev",
+    "build": "node scripts/electron-run.mjs build",
+    "preview": "node scripts/electron-run.mjs preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "dist": "node scripts/electron-run.mjs build && electron-builder",
+    "setup:runtime": "node scripts/setup-runtime.mjs"
+  },
+  "author": "Yusuf <1643.yusuf@gmail.com>",
+  "license": "GPL-3.0-or-later",
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/archiver": "^8.0.0",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "electron": "^44.9.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^6.0.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5"
+  },
+  "dependencies": {
+    "@fluentui/react-components": "^9.74.9",
+    "@fluentui/react-icons": "^2.0.344",
+    "archiver": "^8.0.0",
+    "cheerio": "^1.2.0",
+    "php-parser": "^3.7.0",
+    "playwright-core": "^1.64.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "zustand": "^5.0.15"
+  },
+  "build": {
+    "appId": "org.legt.ai",
+    "productName": "LEGT AI",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "prompts",
+        "to": "prompts"
+      },
+      {
+        "from": "core/scaffold",
+        "to": "scaffold",
+        "filter": [
+          "**/*",
+          "!*.ts"
+        ]
+      },
+      {
+        "from": "core/wptest/php",
+        "to": "wptest-php"
+      }
+    ],
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Development"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.developer-tools"
+    },
+    "asarUnpack": [
+      "node_modules/playwright-core/**"
+    ]
+  }
+}

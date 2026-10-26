@@ -1,0 +1,42 @@
+{
+  "$comment": "scripts/setup-runtime.mjs bu listeyi indirir. Sürümü değiştirmek için URL'yi güncelleyip 'npm run setup:runtime -- --force' çalıştırın.",
+  "xampp": {
+    "win32": {
+      "version": "8.2.12",
+      "url": "https://downloads.sourceforge.net/project/xampp/XAMPP%20Windows/8.2.12/xampp-portable-windows-x64-8.2.12-0-VS16.zip",
+      "root": "xampp",
+      "exclude": [
+        "xampp/tomcat",
+        "xampp/perl",
+        "xampp/FileZillaFTP",
+        "xampp/MercuryMail",
+        "xampp/mailoutput",
+        "xampp/mailtodisk",
+        "xampp/phpMyAdmin",
+        "xampp/webalizer",
+        "xampp/webdav",
+        "xampp/sendmail",
+        "xampp/htdocs",
+        "xampp/install",
+        "xampp/licenses",
+        "xampp/contrib",
+        "xampp/src",
+        "xampp/cgi-bin",
+        "xampp/php/pear",
+        "xampp/php/docs",
+        "xampp/php/tests",
+        "xampp/apache/manual"
+      ]
+    }
+  },
+  "wordpress": {
+    "url": "https://wordpress.org/latest.zip",
+    "root": "wordpress"
+  },
+  "plugins": [
+    {
+      "slug": "elementor",
+      "url": "https://downloads.wordpress.org/plugin/elementor.latest-stable.zip"
+    }
+  ]
+}

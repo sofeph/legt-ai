@@ -1,0 +1,11 @@
+node_modules/
+out/
+dist/
+projects/
+*.log
+.DS_Store
+
+# Taşınabilir test ortamı (scripts/setup-runtime.mjs indirir); yalnızca tanımlar repoda
+runtime/*
+!runtime/manifest.json
+!runtime/README.md

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&family=Inter&display=swap" rel="stylesheet">
+  <style>
+    :root { --brand: #0E7C86; --ink: #1a1a2e; }
+    body { font-family: 'Inter', sans-serif; color: #1a1a2e; margin: 0; }
+    h1, h2 { font-family: "Poppins", sans-serif; font-size: 48px; }
+    .site-header { padding: 16px 32px; background: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+    .hero { padding: 96px 32px; background: #0E7C86; color: #fff; }
+    .btn { padding: 12px 24px; border-radius: 8px; background: #F4A261; }
+    .card { padding: 24px; border-radius: 12px; gap: 16px; }
+    @media (max-width: 1024px) { h1 { font-size: 36px; } }
+    @media (max-width: 767px) { .hero { padding: 48px 16px; } }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <a class="logo" href="/">Türkuaz</a>
+    <nav><a href="#hizmetler">Hizmetler</a><a href="#sss">SSS</a></nav>
+    <button class="menu-toggle">☰</button>
+  </header>
+  <main>
+    <section class="hero">
+      <h1>Dijital işinizi büyütün</h1>
+      <p>Modern web siteleri ve markalar tasarlıyoruz.</p>
+      <a class="btn" href="#iletisim">Teklif al</a>
+      <img src="hero.jpg" alt="">
+    </section>
+    <section id="hizmetler" class="features">
+      <h2>Hizmetler</h2>
+      <div class="grid">
+        <div class="card"><h3>Web</h3><p>Hızlı siteler</p></div>
+        <div class="card"><h3>Marka</h3><p>Kimlik tasarımı</p></div>
+        <div class="card"><h3>SEO</h3><p>Görünürlük</p></div>
+      </div>
+    </section>
+    <section class="testimonials swiper">
+      <h2>Yorumlar</h2>
+      <div class="swiper-wrapper">
+        <blockquote class="swiper-slide">Harika ekip</blockquote>
+        <blockquote class="swiper-slide">Çok hızlı</blockquote>
+        <blockquote class="swiper-slide">Tavsiye ederim</blockquote>
+      </div>
+    </section>
+    <section id="sss" class="faq">
+      <h2>SSS</h2>
+      <details><summary>Ne kadar sürer?</summary><p>2-4 hafta.</p></details>
+    </section>
+  </main>
+  <footer class="site-footer"><p>© 2026 Türkuaz</p></footer>
+  <script>document.querySelector('.menu-toggle').addEventListener('click', () => {})</script>
+</body>
+</html>
