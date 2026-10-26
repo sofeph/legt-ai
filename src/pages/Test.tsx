@@ -125,7 +125,10 @@ function IssueRow({ issue }: { issue: TestIssue }): JSX.Element {
 
 function AgentOutput({ source, text }: { source: string; text: string }): JSX.Element {
   const ref = useRef<HTMLPreElement>(null)
-  useEffect(() => ref.current?.scrollTo({ top: ref.current.scrollHeight }), [text])
+  // Gövde süslü parantezli: yeni Chromium'da scrollTo() Promise döndürür, React onu temizleme fonksiyonu sanar
+  useEffect(() => {
+    ref.current?.scrollTo({ top: ref.current.scrollHeight })
+  }, [text])
   return (
     <div className="flex min-w-0 flex-col">
       <Caption1 truncate wrap={false} style={MONO}>
@@ -220,7 +223,9 @@ export default function Test(): JSX.Element {
       }),
     [id]
   )
-  useEffect(() => logRef.current?.scrollTo({ top: logRef.current.scrollHeight }), [lines])
+  useEffect(() => {
+    logRef.current?.scrollTo({ top: logRef.current.scrollHeight })
+  }, [lines])
 
   const start = async (): Promise<void> => {
     setRunning(true)

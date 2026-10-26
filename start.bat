@@ -45,8 +45,13 @@ if errorlevel 1 (
   exit /b 1
 )
 
-where php >nul 2>&1
-if errorlevel 1 echo Not: 'php' bulunamadi; PHP dosyalari php -l yerine basit kontrolle dogrulanacak.
+rem php -l: once runtime\ altindaki portable XAMPP'in PHP'si (uygulama da bunu kullanir), yoksa PATH
+if exist "%~dp0runtime\xampp\php\php.exe" (
+  echo PHP dogrulamasi: runtime\xampp\php\php.exe
+) else (
+  where php >nul 2>&1
+  if errorlevel 1 echo Not: PHP bulunamadi. "npm run setup:runtime" ile portable XAMPP kurulursa php -l ve canli test onu kullanir; o zamana kadar PHP dosyalari basit kontrolle dogrulanir.
+)
 
 if /i "%CMD%"=="dev" call :ensure_ollama
 if /i "%CMD%"=="preview" call :ensure_ollama

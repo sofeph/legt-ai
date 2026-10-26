@@ -96,8 +96,11 @@ if [ ! -d node_modules ] || [ package.json -nt node_modules ]; then
   touch node_modules
 fi
 
-if ! command -v php >/dev/null 2>&1; then
-  echo "Not: 'php' bulunamadı; PHP dosyaları php -l yerine basit kontrolle doğrulanacak."
+# php -l: önce runtime/ altındaki portable PHP (uygulama da bunu kullanır), yoksa PATH
+if [ -x runtime/xampp/php/php ] || [ -f runtime/xampp/php/php.exe ]; then
+  echo "PHP doğrulaması: runtime/xampp/php"
+elif ! command -v php >/dev/null 2>&1; then
+  echo "Not: PHP bulunamadı. 'npm run setup:runtime' (ya da LEGT_XAMPP_DIR) ile kurulursa php -l ve canlı test onu kullanır; o zamana kadar PHP dosyaları basit kontrolle doğrulanır."
 fi
 
 case "$CMD" in
