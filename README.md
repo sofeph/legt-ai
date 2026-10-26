@@ -25,6 +25,26 @@ npm run build
 
 Gereksinimler: Node 20+, yerel bir LLM sunucusu (varsayılan `http://localhost:11434`). Kod odaklı 7B+ model önerilir (ör. Qwen Coder ailesi). Sistemde `php` varsa (ya da `runtime/` kuruluysa portable XAMPP'ın PHP'si) üretilen dosyalar `php -l` ile de doğrulanır.
 
+## Kaynak seçme
+
+Örnek tasarım üç yoldan verilebilir: HTML'i yapıştırmak, dosya seçmek ya da **public_html klasörü seçmek**. Klasör seçilince içindeki sayfalar (alt klasörler dahil, en fazla 25), CSS ve JS dosyaları toplanır; jQuery/Bootstrap gibi hazır kütüphaneler ve `node_modules`, `.git`, `wp-*` klasörleri atlanır. Sayfalar arasında tekrar eden header/footer bir kez sayılır. Seçilen klasör bir WordPress kurulumuysa (PHP), sayfaları tarayıcıda "Farklı kaydet" ile almanız önerilir.
+
+## Eklentiler
+
+LEGT AI eklentilerle genişletilebilir; şimdilik eklentiler yeni LLM sağlayıcısı ekler. Bir eklenti `plugin.json` + ESM `activate(ctx)` dosyasından oluşur:
+
+```js
+// plugin.json: { "id": "ornek", "name": "Örnek", "version": "1.0.0", "main": "index.mjs", "legtApi": 1 }
+export function activate(ctx) {
+  ctx.registerProvider({
+    id: 'ornek', label: 'Örnek sağlayıcı', defaultBaseUrl: 'http://localhost:9000', apiKey: 'optional', remote: false,
+    create: (settings) => ({ listModels: async () => [...], chat: async (req) => '...' })
+  })
+}
+```
+
+Eklenti klasörünü **Ayarlar > Eklentiler > Klasör** ile açılan dizine kopyalayın, aynı yerden açın. Eklentiler uygulama içinde tam yetkiyle çalışır ve siz açana kadar kapalıdır; yalnızca güvendiğiniz eklentileri kullanın. API anahtarları işletim sisteminin anahtar deposuyla şifrelenerek saklanır.
+
 ## Paralel ajanlar
 
 **Ayarlar > Paralel ajan** (1–10, varsayılan 3): bağımlılığı hazır dosyalar, canlı testteki senaryolar ve onarımlar aynı anda üretilir. Ollama'nın istekleri gerçekten paralel işlemesi için `OLLAMA_NUM_PARALLEL` en az bu değerde olmalı (her ajan ek bellek ister).

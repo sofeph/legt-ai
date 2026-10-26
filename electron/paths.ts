@@ -38,3 +38,11 @@ export function wptestPhpDir(): string {
 export function wptestWorkRoot(): string {
   return join(app.getPath('temp'), 'legt-ai-wptest')
 }
+
+/**
+ * Eklenti klasörleri: kullanıcı veri klasöründeki plugins/ (kaynak koda girmez) ve
+ * isteğe bağlı LEGT_PLUGINS_DIR (eklenti geliştirirken doğrudan kaynak klasörü).
+ */
+export function pluginDirs(): string[] {
+  return [join(app.getPath('userData'), 'plugins'), ...(process.env.LEGT_PLUGINS_DIR ? process.env.LEGT_PLUGINS_DIR.split(';').filter(Boolean) : [])]
+}

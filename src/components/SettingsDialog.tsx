@@ -13,26 +13,42 @@ import {
   MessageBar,
   MessageBarBody,
   Option,
-  SpinButton
+  SpinButton,
+  Subtitle2,
+  Switch,
+  Caption1,
+  Text
 } from '@fluentui/react-components'
-import { ArrowSyncRegular } from '@fluentui/react-icons'
+import { ArrowSyncRegular, FolderOpenRegular, PlugConnectedRegular } from '@fluentui/react-icons'
+import type { PluginInfo, ProviderInfo } from '../../core/plugins/types'
 import { CONCURRENCY, clampConcurrency } from '../../core/pool'
 import { DEFAULT_LLM_SETTINGS, type LLMSettings, type ModelInfo } from '../../core/types'
 
-const DEFAULT_URLS: Record<LLMSettings['provider'], string> = {
-  ollama: 'http://localhost:11434',
-  'openai-compat': 'http://localhost:1234/v1'
-}
 
 export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () => void }): JSX.Element {
   const [s, setS] = useState<LLMSettings>(DEFAULT_LLM_SETTINGS)
   const [models, setModels] = useState<ModelInfo[]>([])
   const [status, setStatus] = useState<{ kind: 'error' | 'success'; text: string } | null>(null)
   const [loading, setLoading] = useState(false)
+  const [providers, setProviders] = useState<ProviderInfo[]>([])
+  const [plugins, setPlugins] = useState<PluginInfo[]>([])
 
   useEffect(() => {
-    if (open) void window.legt.settings.get().then(setS)
+    if (!open) return
+    void window.legt.settings.get().then(setS)
+    void window.legt.plugins.providers().then(setProviders)
+    void window.legt.plugins.list().then(setPlugins)
   }, [open])
+
+  const togglePlugin = async (id: string, on: boolean): Promise<void> => {
+    setPlugins(await window.legt.plugins.setEnabled(id, on))
+    setProviders(await window.legt.plugins.providers())
+  }
+  const reloadPlugins = async (): Promise<void> => {
+    setPlugins(await window.legt.plugins.reload())
+    setProviders(await window.legt.plugins.providers())
+  }
+  const current = providers.find((p) => p.id === s.provider)
 
   const refresh = async (): Promise<void> => {
     setLoading(true)
@@ -60,28 +76,37 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
           <DialogContent className="flex flex-col gap-3">
             <Field label="Sağlayıcı">
               <Dropdown
-                value={s.provider === 'ollama' ? 'Ollama' : 'OpenAI uyumlu (LM Studio, llama.cpp…)'}
+                value={current?.label ?? `${s.provider} (eklentisi yüklü değil)`}
                 selectedOptions={[s.provider]}
                 onOptionSelect={(_, d) => {
-                  const provider = d.optionValue as LLMSettings['provider']
-                  setS({ ...s, provider, baseUrl: DEFAULT_URLS[provider] })
+                  const next = providers.find((p) => p.id === d.optionValue)
+                  if (!next) return
+                  setS({ ...s, provider: next.id, baseUrl: next.defaultBaseUrl, model: '' })
                   setModels([])
                 }}
               >
-                <Option value="ollama">Ollama</Option>
-                <Option value="openai-compat">OpenAI uyumlu (LM Studio, llama.cpp…)</Option>
+                {providers.map((p) => (
+                  <Option key={p.id} value={p.id} text={p.label}>
+                    {p.pluginId ? `${p.label} · eklenti` : p.label}
+                  </Option>
+                ))}
               </Dropdown>
             </Field>
+            {current?.remote && (
+              <MessageBar intent="warning">
+                <MessageBarBody>Bu sağlayıcı bilgisayarınızın dışında çalışır: kaynak HTML ve üretilen kod sağlayıcının sunucusuna gönderilir.</MessageBarBody>
+              </MessageBar>
+            )}
             <Field label="Adres">
               <Input value={s.baseUrl} onChange={(_, d) => setS({ ...s, baseUrl: d.value })} />
             </Field>
-            {s.provider === 'openai-compat' && (
-              <Field label="API anahtarı (gerekirse)">
+            {current && current.apiKey !== 'none' && (
+              <Field label={current.apiKey === 'required' ? 'API anahtarı' : 'API anahtarı (gerekirse)'} hint={current.apiKeyHint ?? 'Diskte işletim sisteminin anahtar deposuyla şifrelenerek saklanır'}>
                 <Input type="password" value={s.apiKey ?? ''} onChange={(_, d) => setS({ ...s, apiKey: d.value })} />
               </Field>
             )}
             <div className="flex items-end gap-2">
-              <Field label="Model" className="flex-1" hint="Kod odaklı, 7B ve üzeri bir model önerilir (ör. Qwen Coder ailesi)">
+              <Field label="Model" className="flex-1" hint={current?.modelHint ?? 'Kod odaklı, 7B ve üzeri bir model önerilir (ör. Qwen Coder ailesi)'}>
                 {models.length ? (
                   <Dropdown value={s.model} selectedOptions={[s.model]} onOptionSelect={(_, d) => setS({ ...s, model: d.optionValue ?? '' })}>
                     {models.map((m) => (
@@ -91,7 +116,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                     ))}
                   </Dropdown>
                 ) : (
-                  <Input value={s.model} placeholder="ör. qwen2.5-coder:14b" onChange={(_, d) => setS({ ...s, model: d.value })} />
+                  <Input value={s.model} placeholder={current?.pluginId ? 'Modelleri getir ile listeleyin' : 'ör. qwen2.5-coder:14b'} onChange={(_, d) => setS({ ...s, model: d.value })} />
                 )}
               </Field>
               <Button icon={<ArrowSyncRegular />} disabled={loading} onClick={() => void refresh()}>
@@ -128,6 +153,33 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                 <MessageBarBody>{status.text}</MessageBarBody>
               </MessageBar>
             )}
+            <div className="mt-2 flex items-center gap-2">
+              <PlugConnectedRegular />
+              <Subtitle2>Eklentiler</Subtitle2>
+              <Button size="small" appearance="subtle" icon={<ArrowSyncRegular />} className="!ml-auto" onClick={() => void reloadPlugins()}>
+                Yeniden yükle
+              </Button>
+              <Button size="small" appearance="subtle" icon={<FolderOpenRegular />} onClick={() => void window.legt.plugins.openFolder()}>
+                Klasör
+              </Button>
+            </div>
+            <Caption1>
+              Eklenti klasörüne kopyalanan eklentiler burada listelenir ve siz açana kadar kapalı kalır. Eklentiler uygulamanın içinde tam yetkiyle çalışır; yalnızca güvendiğiniz eklentileri açın.
+            </Caption1>
+            {plugins.length === 0 && <Caption1>Kurulu eklenti yok.</Caption1>}
+            {plugins.map((pl) => (
+              <div key={pl.dir} className="flex items-start gap-2">
+                <Switch checked={pl.enabled} onChange={(_, d) => void togglePlugin(pl.id, d.checked)} disabled={!!pl.error && !pl.enabled} />
+                <div className="flex min-w-0 flex-col">
+                  <Text weight="semibold">
+                    {pl.name} <Caption1>{pl.version}</Caption1>
+                  </Text>
+                  {pl.description && <Caption1>{pl.description}</Caption1>}
+                  {pl.loaded && pl.providers.length > 0 && <Caption1>Sağlayıcı: {pl.providers.join(', ')}</Caption1>}
+                  {pl.error && <Caption1 style={{ color: 'var(--colorPaletteRedForeground1)' }}>{pl.error}</Caption1>}
+                </div>
+              </div>
+            ))}
           </DialogContent>
           <DialogActions>
             <Button appearance="secondary" onClick={onClose}>

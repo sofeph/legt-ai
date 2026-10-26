@@ -47,19 +47,22 @@ legt-ai/
 │       ├── llm.ts              # LLM çağrıları (stream, iptal)
 │       ├── validate.ts         # php -l, JSON parse, yasaklı kalıp taraması
 │       ├── package.ts          # zip üretimi
-│       └── wptest.ts           # canlı test: çalıştır, rapor, ekran görüntüsü, açık site
+│       ├── wptest.ts           # canlı test: çalıştır, rapor, ekran görüntüsü, açık site
+│       └── plugins.ts          # eklentileri yükle, aç/kapa, sağlayıcı listesi
 ├── core/
 │   ├── llm/
 │   │   ├── ollama.ts           # /api/chat, num_ctx, stream
 │   │   └── openaiCompat.ts     # /v1/chat/completions
 │   ├── html/
-│   │   ├── splitSections.ts    # HTML'i bölümlere ayırır
+│   │   ├── siteFolder.ts       # public_html vb. klasörden HTML/CSS/JS toplar
+│   │   ├── splitSections.ts    # HTML'i bölümlere ayırır (çok sayfalı girdide tekrarları tekilleştirir)
 │   │   └── extractTokens.ts    # Renk, font, boşluk, breakpoint çıkarır (LLM'siz ön analiz)
 │   ├── pipeline/
 │   │   ├── analyze.ts          # ADIM 2: plan JSON'u
 │   │   ├── generate.ts         # ADIM 3-5: dosya dosya üretim
 │   │   ├── repair.ts           # Doğrulama hatasında düzeltme döngüsü
 │   │   └── package.ts
+│   ├── plugins/                # eklenti API'si (legtApi 1) ve yükleyici: sağlayıcı kaydı
 │   ├── scaffold/               # LLM'siz, deterministik üretilen dosyalar
 │   │   ├── block-theme/
 │   │   └── elementor-free/
@@ -108,7 +111,7 @@ Sohbet tabanlı "devam yaz" akışı yerine uygulama adımları kendisi yönetir
 
 ### ADIM 1 — Intake (LLM yok)
 Kullanıcıdan alınır:
-* Örnek HTML (yapıştır veya dosya seç; CSS/JS ayrıysa birden fazla dosya)
+* Örnek HTML (yapıştır, dosya seç ya da **site klasörü seç**: `public_html` / `dist` gibi bir klasördeki tüm sayfalar + CSS/JS; `core/html/siteFolder.ts` — index önce, en fazla 25 sayfa, hazır kütüphaneler ve `node_modules`/`wp-*` klasörleri atlanır, WordPress kurulumu seçilirse uyarır)
 * Tema adı, slug, önek (ör. `trk`). Önek tüm fonksiyon, class, handle ve text domain'lerde kullanılır. Doğrulama: `^[a-z][a-z0-9_]{1,9}$`
 * Dil, ek istekler (blog, WooCommerce, çok sayfa)
 * Mod: Block Theme veya Elementor Free
@@ -228,6 +231,12 @@ LLM yalnızca tasarıma bağlı dosyaları üretir: token CSS'i / `theme.json`, 
 * Her çağrı = `system.md` (system mesajı) + `analyze.md` / `file.md` / `repair.md` (user mesajı). Sohbet geçmişi tutulmaz, her çağrı bağımsızdır.
 * Yer tutucular: `{{name}} {{slug}} {{prefix}} {{Prefix}} {{textdomain}} {{language}} {{path}} {{fileKind}} {{tokens}} {{section}} {{sectionHtml}} {{dependencySignatures}} {{widgetName}} {{WidgetClass}} {{tabletBp}} {{mobileBp}} {{requests}} {{sections}} {{errors}} {{content}} {{attempt}}`; canlı testte ek olarak `{{renderedHtml}}` (bölümün canlı sitedeki DOM'u) ve `{{js}}` (planlanan JS davranışı). Doldurulmamış `{{...}}` kalırsa çağrı yapılmaz, hata loglanır.
 * `{{dependencySignatures}}` `core/pipeline/generate.ts` tarafından çıkarılır: PHP'den class/fonksiyon adları, CSS'ten kök sınıflar, JS'ten handle adı. Tam dosya içeriği gönderilmez.
+
+### Eklentiler
+* Eklenti = `plugin.json` (`id`, `name`, `version`, `main`, `legtApi: 1`) + ESM `main` dosyası, `export function activate(ctx)`. Şimdilik tek uzantı noktası `ctx.registerProvider({ id, label, defaultBaseUrl, apiKey, remote, create(settings) → LLMProvider })`.
+* Konum: kullanıcı veri klasöründe `plugins/` (kaynak koda girmez); geliştirirken `LEGT_PLUGINS_DIR`. Yeni bulunan eklenti **kapalı** başlar, Ayarlar > Eklentiler'den açılır (ana süreçte tam yetkiyle çalıştığı için).
+* `remote: true` sağlayıcı seçilince Ayarlar'da "veri bilgisayardan çıkar" uyarısı gösterilir; offline-first ilkesi gereği bulut sağlayıcıları çekirdeğe değil eklentiye konur.
+* API anahtarları `settings.json`'a düz yazılmaz: Electron `safeStorage` (Windows DPAPI / macOS Keychain) ile şifrelenir.
 
 ---
 

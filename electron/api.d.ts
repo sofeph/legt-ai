@@ -1,6 +1,9 @@
 // preload.ts'in window.legt'e açtığı API'nin tipi. Renderer yalnızca bunu görür.
 import type { GenEvent, IntakeInput, IntakeSource, LLMSettings, ModelInfo, Plan, PreAnalysis, ProjectMeta, ProjectState, QualityItem, RuntimeStatus, TestEvent, TestOptions, TestReport, ValidationIssue } from '../core/types'
 
+import type { PluginInfo, ProviderInfo } from '../core/plugins/types'
+import type { FolderScan } from '../core/types'
+
 export type { ProjectMeta, ProjectState }
 
 export interface LoadedProject {
@@ -24,6 +27,8 @@ export interface LegtApi {
   html: {
     preAnalyze(sources: IntakeSource[]): Promise<PreAnalysis>
     pickSources(): Promise<IntakeSource[]>
+    /** Site klasörü seçtirir (public_html vb.), HTML/CSS/JS'i toplar; iptalde null */
+    pickFolder(): Promise<FolderScan | null>
   }
   settings: {
     get(): Promise<LLMSettings>
@@ -52,6 +57,14 @@ export interface LegtApi {
   }
   validate: {
     file(path: string, content: string, projectId: string): Promise<ValidationIssue[]>
+  }
+  plugins: {
+    list(): Promise<PluginInfo[]>
+    reload(): Promise<PluginInfo[]>
+    setEnabled(id: string, on: boolean): Promise<PluginInfo[]>
+    openFolder(): Promise<void>
+    /** Yerleşik + etkin eklentilerin LLM sağlayıcıları */
+    providers(): Promise<ProviderInfo[]>
   }
   wptest: {
     /** Portable XAMPP / WordPress / Elementor hazır mı */

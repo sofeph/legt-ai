@@ -5,6 +5,7 @@ import { registerLlmIpc } from './ipc/llm'
 import { registerPackageIpc } from './ipc/package'
 import { registerValidateIpc } from './ipc/validate'
 import { registerWptestIpc, shutdownWptest } from './ipc/wptest'
+import { loadPlugins, registerPluginsIpc } from './ipc/plugins'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -51,7 +52,10 @@ function createWindow(): void {
 
 const getWindow = (): BrowserWindow | null => mainWindow
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  // Etkin eklentiler pencereden önce yüklenir; biri bozuksa uygulama yine açılır
+  await loadPlugins().catch((e) => console.error('Eklentiler yüklenemedi:', e))
+  registerPluginsIpc()
   registerFsIpc(getWindow)
   registerLlmIpc(getWindow)
   registerValidateIpc()

@@ -31,6 +31,15 @@ export interface IntakeInput {
   }
 }
 
+/** Bir site klasörünü (public_html, dist, www...) tarama sonucu */
+export interface FolderScan {
+  root: string
+  sources: IntakeSource[]
+  /** Atlanan dosyalar ve nedeni (kullanıcıya gösterilir) */
+  skipped: string[]
+  warnings: string[]
+}
+
 // ---- Ön analiz (LLM'siz) ----
 
 export interface SectionSummary {
@@ -143,13 +152,16 @@ export type Plan = ElementorPlan | BlockPlan
 // ---- LLM ayarları ----
 
 export interface LLMSettings {
-  provider: 'ollama' | 'openai-compat'
+  /** "ollama", "openai-compat" ya da bir eklentinin kaydettiği sağlayıcı kimliği */
+  provider: string
   baseUrl: string
   model: string
   numCtx: number
   apiKey?: string
   /** Aynı anda çalışan LLM ajanı sayısı (1-10, varsayılan 3); Ollama'da OLLAMA_NUM_PARALLEL ile birlikte etkili */
   concurrency: number
+  /** Eklenti kimliği → etkin mi (yeni bulunan eklentiler kapalı başlar) */
+  plugins?: Record<string, boolean>
 }
 
 export const DEFAULT_LLM_SETTINGS: LLMSettings = {

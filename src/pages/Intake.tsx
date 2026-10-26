@@ -23,7 +23,7 @@ import {
   Text,
   Textarea
 } from '@fluentui/react-components'
-import { DismissRegular, FolderOpenRegular, SparkleRegular } from '@fluentui/react-icons'
+import { DismissRegular, DocumentRegular, FolderOpenRegular, GlobeRegular, SparkleRegular } from '@fluentui/react-icons'
 import { PREFIX_RE, type IntakeInput, type IntakeSource, type Mode, type PreAnalysis } from '../../core/types'
 import { useProject } from '../store/project'
 
@@ -60,6 +60,15 @@ export default function Intake(): JSX.Element {
   const [pre, setPre] = useState<PreAnalysis | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [folder, setFolder] = useState<{ root: string; warnings: string[]; skipped: string[] } | null>(null)
+
+  const pickFolder = async (): Promise<void> => {
+    const scan = await window.legt.html.pickFolder()
+    if (!scan) return
+    // Klasör seçimi önceki klasörün dosyalarının yerini alır; tek tek seçilen dosyalar korunur
+    setFiles((old) => [...old.filter((f) => !f.name.includes('/') && !scan.sources.some((s) => s.name === f.name)), ...scan.sources])
+    setFolder({ root: scan.root, warnings: scan.warnings, skipped: scan.skipped })
+  }
 
   // Ad değişince slug/önek öner (kullanıcı elle değiştirmediyse)
   useEffect(() => {
@@ -171,11 +180,31 @@ export default function Intake(): JSX.Element {
           <CardHeader
             header={<Subtitle2>Örnek HTML</Subtitle2>}
             action={
-              <Button icon={<FolderOpenRegular />} onClick={() => void window.legt.html.pickSources().then((f) => setFiles((old) => [...old, ...f]))}>
-                Dosya seç
-              </Button>
+              <div className="flex gap-2">
+                <Button icon={<DocumentRegular />} onClick={() => void window.legt.html.pickSources().then((f) => setFiles((old) => [...old, ...f]))}>
+                  Dosya seç
+                </Button>
+                <Button icon={<FolderOpenRegular />} onClick={() => void pickFolder()}>
+                  public_html klasörü seç
+                </Button>
+              </div>
             }
           />
+          {folder && (
+            <MessageBar intent={folder.warnings.length ? 'warning' : 'info'}>
+              <MessageBarBody>
+                <div className="flex items-center gap-1">
+                  <GlobeRegular /> <span style={{ fontFamily: 'Consolas, "Cascadia Code", monospace' }}>{folder.root}</span>
+                </div>
+                {files.filter((f) => f.kind === 'html').length} sayfa, {files.filter((f) => f.kind === 'css').length} CSS, {files.filter((f) => f.kind === 'js').length} JS alındı
+                {folder.skipped.length > 0 && ` · ${folder.skipped.length} dosya atlandı`}
+                {folder.warnings.map((w) => (
+                  <div key={w}>{w}</div>
+                ))}
+                {folder.skipped.length > 0 && <div title={folder.skipped.join('\n')}>Atlananlar: {folder.skipped.slice(0, 4).join(', ')}{folder.skipped.length > 4 ? ' …' : ''}</div>}
+              </MessageBarBody>
+            </MessageBar>
+          )}
           {files.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {files.map((f, i) => (

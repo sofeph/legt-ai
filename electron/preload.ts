@@ -7,7 +7,8 @@ const api: LegtApi = {
   platform: process.platform,
   html: {
     preAnalyze: (sources) => invoke('html:preAnalyze', sources),
-    pickSources: () => invoke('html:pickSources')
+    pickSources: () => invoke('html:pickSources'),
+    pickFolder: () => invoke('html:pickFolder')
   },
   settings: {
     get: () => invoke('settings:get'),
@@ -37,6 +38,13 @@ const api: LegtApi = {
   },
   validate: {
     file: (path, content, projectId) => invoke('validate:file', path, content, projectId)
+  },
+  plugins: {
+    list: () => invoke('plugins:list'),
+    reload: () => invoke('plugins:reload'),
+    setEnabled: (id, on) => invoke('plugins:setEnabled', id, on),
+    openFolder: () => invoke('plugins:openFolder'),
+    providers: () => invoke('llm:providers')
   },
   wptest: {
     status: (id) => invoke('wptest:status', id),

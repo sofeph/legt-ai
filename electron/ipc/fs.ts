@@ -1,7 +1,8 @@
-import { dialog, ipcMain, shell, type BrowserWindow } from 'electron'
+import { dialog, ipcMain, safeStorage, shell, type BrowserWindow } from 'electron'
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { basename, dirname, extname } from 'node:path'
 import { extractTokens } from '../../core/html/extractTokens'
+import { safeSourceName, scanSiteFolder, type FolderScan } from '../../core/html/siteFolder'
 import { splitSections } from '../../core/html/splitSections'
 import { normalizePlan } from '../../core/pipeline/layout'
 import { ProjectStore } from '../../core/project/store'
@@ -19,13 +20,35 @@ export function preAnalyze(sources: IntakeSource[]): PreAnalysis {
   return { sections: splitSections(html, js), tokens: extractTokens(html, css) }
 }
 
+type StoredSettings = LLMSettings & { apiKeyEnc?: string }
+
 export async function loadSettings(): Promise<LLMSettings> {
   try {
-    const s: LLMSettings = { ...DEFAULT_LLM_SETTINGS, ...JSON.parse(await readFile(settingsFile(), 'utf8')) }
+    const { apiKeyEnc, ...s }: StoredSettings = { ...DEFAULT_LLM_SETTINGS, ...JSON.parse(await readFile(settingsFile(), 'utf8')) }
+    if (apiKeyEnc && safeStorage.isEncryptionAvailable()) {
+      try {
+        s.apiKey = safeStorage.decryptString(Buffer.from(apiKeyEnc, 'base64'))
+      } catch {
+        // Başka kullanıcı/makinede şifrelenmiş anahtar çözülemez; kullanıcı yeniden girer
+        s.apiKey = ''
+      }
+    }
     return { ...s, concurrency: clampConcurrency(s.concurrency) }
   } catch {
     return { ...DEFAULT_LLM_SETTINGS }
   }
+}
+
+/** API anahtarı düz metin yazılmaz: işletim sisteminin anahtar deposuyla (Windows DPAPI, macOS Keychain) şifrelenir */
+export async function saveSettings(s: LLMSettings): Promise<void> {
+  const { apiKey, ...rest } = { ...s, concurrency: clampConcurrency(s.concurrency) }
+  const stored: StoredSettings = { ...rest }
+  if (apiKey) {
+    if (safeStorage.isEncryptionAvailable()) stored.apiKeyEnc = safeStorage.encryptString(apiKey).toString('base64')
+    else stored.apiKey = apiKey
+  }
+  await mkdir(dirname(settingsFile()), { recursive: true })
+  await writeFile(settingsFile(), JSON.stringify(stored, null, 2))
 }
 
 function assertIntake(input: IntakeInput): void {
@@ -54,10 +77,20 @@ export function registerFsIpc(getWindow: () => BrowserWindow | null): void {
     )
   })
 
+  // Site klasörü (public_html, dist, www...): içindeki HTML/CSS/JS dosyaları tek seferde
+  ipcMain.handle('html:pickFolder', async (): Promise<FolderScan | null> => {
+    const win = getWindow()
+    const opts = { title: 'Site klasörünü seçin (ör. public_html)', properties: ['openDirectory'] as 'openDirectory'[] }
+    const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
+    if (res.canceled || !res.filePaths[0]) return null
+    return scanSiteFolder(res.filePaths[0])
+  })
+
   ipcMain.handle('settings:get', () => loadSettings())
   ipcMain.handle('settings:set', async (_e, s: LLMSettings) => {
-    await mkdir(dirname(settingsFile()), { recursive: true })
-    await writeFile(settingsFile(), JSON.stringify({ ...s, concurrency: clampConcurrency(s.concurrency) }, null, 2))
+    // Eklenti açık/kapalı durumu Ayarlar > Eklentiler'den yönetilir; diyalogdaki eski kopya üzerine yazmasın
+    const plugins = (await loadSettings()).plugins
+    await saveSettings({ ...s, ...(plugins ? { plugins } : {}) })
   })
 
   ipcMain.handle('projects:list', () => store().list())
@@ -67,7 +100,8 @@ export function registerFsIpc(getWindow: () => BrowserWindow | null): void {
     const s = store()
     const pre = preAnalyze(input.sources)
     const id = await s.create(input, pre)
-    for (const src of input.sources) await s.writeText(id, `sources/${basename(src.name)}`, src.content)
+    // Göreli yol korunur: çok sayfalı sitede "index.html" ile "blog/index.html" çakışmaz
+    for (const src of input.sources) await s.writeText(id, `sources/${safeSourceName(src.name)}`, src.content)
     return id
   })
 

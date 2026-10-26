@@ -51,11 +51,23 @@ export async function* readLines(body: ReadableStream<Uint8Array>): AsyncGenerat
   if (rest) yield rest
 }
 
+let pluginFactory: ((settings: LLMSettings) => Promise<LLMProvider>) | null = null
+
+/** Eklenti sağlayıcıları için fabrika (core/plugins/manager yüklenince kendini kaydeder) */
+export function setPluginProviderFactory(factory: (settings: LLMSettings) => Promise<LLMProvider>): void {
+  pluginFactory = factory
+}
+
 export async function createProvider(settings: LLMSettings): Promise<LLMProvider> {
   if (settings.provider === 'ollama') {
     const { OllamaProvider } = await import('./ollama')
     return new OllamaProvider(settings)
   }
-  const { OpenAICompatProvider } = await import('./openaiCompat')
-  return new OpenAICompatProvider(settings)
+  if (settings.provider === 'openai-compat') {
+    const { OpenAICompatProvider } = await import('./openaiCompat')
+    return new OpenAICompatProvider(settings)
+  }
+  // Eklentinin kaydettiği sağlayıcı (Ayarlar > Eklentiler)
+  if (!pluginFactory) throw new Error(`Bilinmeyen sağlayıcı: ${settings.provider}`)
+  return pluginFactory(settings)
 }
