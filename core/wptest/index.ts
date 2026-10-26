@@ -19,6 +19,9 @@ import { detectRuntime, runtimePaths, WpServer, wpConfig } from './runtime'
 import { parseScenarios, type Scenario } from './scenarios'
 import { clampConcurrency, runPool } from '../pool'
 
+/** Bir turda LLM'e gönderilecek en fazla dosya sayısı (token/süre tasarrufu) */
+const MAX_REPAIR_FILES = 4
+
 export { detectRuntime, stopAllServers, WpServer } from './runtime'
 
 const SCENARIO_RETRIES = 2
@@ -186,8 +189,8 @@ export async function runLiveTest(opts: LiveTestOptions): Promise<LiveTestResult
     const adminPass = randomBytes(9).toString('base64url')
     const T = themeDir(plan)
     const P = pluginDir(plan)
-    const [systemMd, testPlanMd, testRepairMd, repairMd] = await Promise.all(
-      (['system', 'test-plan', 'test-repair', 'repair'] as const).map((n) => loadPrompt(opts.promptsDir, plan.mode, n))
+    const [systemMd, testPlanMd, testRepairMd] = await Promise.all(
+      (['system', 'test-plan', 'test-repair'] as const).map((n) => loadPrompt(opts.promptsDir, plan.mode, n))
     )
     let scenarios: Scenario[] | null = null
 
@@ -381,7 +384,8 @@ export async function runLiveTest(opts: LiveTestOptions): Promise<LiveTestResult
         const raw = extractFileLenient(output, file.path)
         return raw === null ? null : autoFix(file.path, raw).content
       }
-      let fixed = extract(await llmCall(`test-repair${round}-${file.path}`, system, user, false, file.path))
+      const first = extract(await llmCall(`test-repair${round}-${file.path}`, system, user, false, file.path))
+      let fixed = first
       if (fixed === null) {
         // Biçim hatası: aynı isteği işaretçi hatırlatmasıyla bir kez daha
         const reminder = `${user}
@@ -397,17 +401,8 @@ export async function runLiveTest(opts: LiveTestOptions): Promise<LiveTestResult
         log(`${file.path}: model dosyayı değiştirmedi (kod doğru, test hatalı olabilir)`)
         return false
       }
-      // Canlı onarım statik doğrulamayı bozmamalı; bozarsa bir kez statik onarım denenir
-      let staticIssues = await validateAll(ctx, file, kind, fixed, opts.usePhpLint)
-      if (staticIssues.length) {
-        const again = extract(
-          await llmCall(`test-repair${round}-static-${file.path}`, system, renderTemplate(repairMd, { ...vars, attempt: '1', errors: formatIssues(file.path, staticIssues), content: fixed }), false, file.path)
-        )
-        if (again !== null) {
-          fixed = again
-          staticIssues = await validateAll(ctx, file, kind, fixed, opts.usePhpLint)
-        }
-      }
+      // Canlı onarım statik doğrulamayı bozmamalı; bozarsa ek LLM çağrısı harcanmadan eski hâl korunur
+      const staticIssues = await validateAll(ctx, file, kind, fixed, opts.usePhpLint)
       if (staticIssues.length) {
         log(`${file.path}: onarım statik doğrulamadan geçmedi, eski hâli korundu\n${formatIssues(file.path, staticIssues)}`)
         return false
@@ -456,7 +451,12 @@ export async function runLiveTest(opts: LiveTestOptions): Promise<LiveTestResult
       // Onarılabilir: hatası olan, LLM'in ürettiği ve bu oturumda geri alınmamış dosyalar
       const byFile = new Map<string, TestIssue[]>()
       for (const i of result.issues) if (i.file) byFile.set(i.file, [...(byFile.get(i.file) ?? []), i])
-      const targets = plan.files.filter((f) => f.source === 'llm' && !blocked.has(f.path) && errorCount(byFile.get(f.path) ?? []) > 0)
+      // Token tasarrufu: en çok ve en ağır hatası olan ilk MAX_REPAIR_FILES dosya onarılır (PHP/render önce)
+      const weight = (path: string): number => (byFile.get(path) ?? []).reduce((n, i) => n + (i.severity !== 'error' ? 0 : i.kind === 'php' || i.kind === 'render' ? 10 : 1), 0)
+      const targets = plan.files
+        .filter((f) => f.source === 'llm' && !blocked.has(f.path) && errorCount(byFile.get(f.path) ?? []) > 0)
+        .sort((x, y) => weight(y.path) - weight(x.path))
+        .slice(0, MAX_REPAIR_FILES)
       const unowned = result.issues.filter((i) => i.severity === 'error' && (!i.file || !targets.some((t) => t.path === i.file)))
       if (unowned.length) log(`${unowned.length} hata bir LLM dosyasına bağlanamadı (scaffold, çekirdek ya da bilinmeyen kaynak); yalnızca raporlanıyor`)
       if (!targets.length) break
