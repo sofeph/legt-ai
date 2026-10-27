@@ -11,6 +11,11 @@ Deneme: {{attempt}} / 2
             "Yasaklı kalıp: _register_controls (satır 37)"
             "Önek eksik: global fonksiyon register_widgets()" -->
 
+## Düzeltme ipuçları
+- "Elementor'da olmayan sabit/metot": hata mesajındaki geçerli listeden birini kullan; yeni ad uydurma.
+- "Menü Repeater'a gömülmüş" / "Liste içeriği gömülü": içeriği WordPress'ten oku (`{{prefix}}_render_menu`, `WP_Query`, `get_terms`); Repeater yalnızca yedek olsun.
+- Hata dışındaki hiçbir şeyi (kontrol id'leri, sınıflar, CSS) değiştirme.
+
 ## Mevcut içerik
 {{content}}
 

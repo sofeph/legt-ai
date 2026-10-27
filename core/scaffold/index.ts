@@ -99,6 +99,7 @@ async function sources(scaffoldDir: string, plan: Plan, pre: PreAnalysis): Promi
     }
     list.push({ out: `${P}/includes/widgets-manifest.php`, from: widgetManifest })
     list.push({ out: `${P}/includes/demo-data.php`, from: demoData })
+    list.push({ out: `${P}/includes/demo-content.php`, from: demoContent })
     // Demo şablonları plandan: home = içerik widget'ları sırayla, header/footer = kendi widget'ı
     list.push({ out: `${P}/demo/home.json`, from: (p, pr) => demoJson(p as ElementorPlan, pr, 'home') })
     if (hasRole(plan, pre, 'header')) list.push({ out: `${P}/demo/header.json`, from: (p, pr) => demoJson(p as ElementorPlan, pr, 'header') })
@@ -233,6 +234,38 @@ ${colors.map(([k, v]) => `		${phpStr(k)} => ${phpStr(v)},`).join('\n')}
 	'fonts'  => array(
 		'heading' => ${phpStr(heading)},
 		'body'    => ${phpStr(body)},
+	),
+);
+`
+}
+
+/**
+ * includes/demo-content.php — örnek HTML'deki yazı kartlarından demo yazıları ve kategoriler.
+ * İçe aktarıcı bunları gerçek WordPress yazısı olarak ekler; widget'lar WP_Query ile okur.
+ */
+function demoContent(plan: Plan, pre: PreAnalysis): string {
+  const d = pre.demo ?? { posts: [], categories: [] }
+  const ns = pascalPrefix(plan.theme.prefix)
+  return `<?php
+/**
+ * Demo yazıları ve kategoriler — LEGT AI tarafından örnek HTML'den üretildi.
+ *
+ * @package ${ns}
+ */
+
+if ( ! defined( 'ABSPATH' ) ) exit;
+
+return array(
+	'categories' => array(
+${d.categories.map((c) => `		${phpStr(c)},`).join('\n')}
+	),
+	'posts'      => array(
+${d.posts.map((p) => `		array(
+			'title'    => ${phpStr(p.title)},
+			'excerpt'  => ${phpStr(p.excerpt)},
+			'image'    => ${phpStr(p.image)},
+			'category' => ${phpStr(p.category)},
+		),`).join('\n')}
 	),
 );
 `

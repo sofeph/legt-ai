@@ -235,3 +235,16 @@ describe('token tasarrufu', () => {
     }
   })
 })
+
+describe('Elementor global sabitleri', () => {
+  it('uydurma TYPOGRAPHY_BODY gerçek sabite çevrilir, geçerliler dokunulmaz', async () => {
+    const { autoFix } = await import('@core/validate/autofix')
+    const { checkGlobalConstants } = await import('@core/validate/elementor')
+    const src = "<?php\nuse Elementor\Core\Kits\Documents\Tabs\Global_Typography;\n$a = Global_Typography::TYPOGRAPHY_BODY; $b = Global_Typography::TYPOGRAPHY_PRIMARY;"
+    expect(checkGlobalConstants(src)).toHaveLength(1)
+    const fixed = autoFix('x-elementor-widgets/widgets/class-a.php', src)
+    expect(fixed.content).toContain('Global_Typography::TYPOGRAPHY_TEXT')
+    expect(fixed.content).toContain('Global_Typography::TYPOGRAPHY_PRIMARY')
+    expect(checkGlobalConstants(fixed.content)).toEqual([])
+  })
+})

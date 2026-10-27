@@ -2,6 +2,7 @@ import { dialog, ipcMain, safeStorage, shell, type BrowserWindow } from 'electro
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { basename, dirname, extname } from 'node:path'
 import { extractTokens } from '../../core/html/extractTokens'
+import { extractDemoContent } from '../../core/html/demoContent'
 import { safeSourceName, scanSiteFolder, type FolderScan } from '../../core/html/siteFolder'
 import { splitSections } from '../../core/html/splitSections'
 import { normalizePlan } from '../../core/pipeline/layout'
@@ -17,7 +18,7 @@ export function preAnalyze(sources: IntakeSource[]): PreAnalysis {
   const html = sources.filter((s) => s.kind === 'html').map((s) => s.content).join('\n')
   const css = sources.filter((s) => s.kind === 'css').map((s) => s.content)
   const js = sources.filter((s) => s.kind === 'js').map((s) => s.content)
-  return { sections: splitSections(html, js), tokens: extractTokens(html, css) }
+  return { sections: splitSections(html, js), tokens: extractTokens(html, css), demo: extractDemoContent(sources) }
 }
 
 type StoredSettings = LLMSettings & { apiKeyEnc?: string }

@@ -33,15 +33,17 @@ Dosya türü: {{fileKind}}   <!-- widget-php | widget-css | widget-js | theme-cs
   - "Ek CSS sınıfı" TEXT kontrolü
   - Header/navbar/footer gibi menü içeren widget'ta menü ASLA yalnızca Repeater ile gömülmez: `menu` SELECT kontrolü (`'options' => {{prefix}}_menu_options()`) ekle ve `render()`'da `if ( ! {{prefix}}_render_menu( $settings['menu'], 'primary', '{{prefix}}-menu' ) ) { /* Repeater yedek öğeleri */ }` kullan (footer menüsü için konum `'footer'`). Fonksiyonlar eklentide hazırdır, yazma. `content_template()` yedek öğeleri gösterir.
   - Varsayılanlar kaynak HTML'deki metin, görsel URL'si ve öğe sayısıyla birebir
+- DİNAMİK İÇERİK: WordPress'in bildiği hiçbir şey koda ya da Repeater'a gömülmez. Yazı/kart listeleri `WP_Query` ile (başlık, özet, görsel, kategori, tarih, yazar, bağlantı: `get_the_title`, `get_the_excerpt`, `get_the_post_thumbnail_url`, `get_the_category`, `get_permalink`), kategori/etiket listeleri `get_terms` ile, site adı/slogan `get_bloginfo`, logo `get_custom_logo`/`has_custom_logo`, menü `<önek>_render_menu`, arama `get_search_form`, yıl `gmdate('Y')`, sayfalama `paginate_links`, yazar `get_the_author`, tekil yazı içeriği `the_content`. Ayarlar (başlık, düğme metni, yazı sayısı, kategori seçimi) Elementor kontrolünden gelir; varsayılan metinler kaynak HTML'dekidir. Repeater yalnızca WordPress'te karşılığı olmayan içerik içindir (SSS, özellik listesi, istatistik).
 - `render()`: `get_settings_for_display()`, kaynak HTML'in yapısını koru, sınıfları `{{prefix}}-` önekiyle yeniden adlandır, her çıktıyı escape et, `add_render_attribute` kullan
 - `content_template()`: `render()` ile aynı çıktıyı veren Underscore/Backbone şablonu
+- Birebir görünüm: kaynak HTML'in etiket yapısını, iç içe sırasını ve sınıf adlarını `{{prefix}}-` önekiyle koru; öğe ekleme, çıkarma, yeniden sıralama yapma. Boşluk, boyut, renk, font, kenarlık, gölge ve hizalama değerleri kaynak CSS'tekiyle aynı olmalı (varsayılan kontrol değerleri de)
 - Kaynak HTML'deki hiçbir metin, renk veya görsel koda gömülü kalmaz
 
 ### widget-css
 - Yalnızca bu widget'ın `.{{prefix}}-{ad}` kapsamı altında
 - Renkler `var(--e-global-color-*, #fallback)`, fontlar `var(--e-global-typography-*-font-family, fallback)`
 - Breakpoint'ler: tablet `{{tabletBp}}px`, mobil `{{mobileBp}}px`
-- Kaynak HTML'in görünümünü birebir yakala
+- Kaynak HTML'in görünümünü piksel düzeyinde yakala: ilgili kaynak CSS kurallarını (seçici başına tüm özellikler, `:hover`/`:focus`, pseudo-elementler, `@media`, animasyonlar, `@keyframes`) sınıfları `.{{prefix}}-{ad}` altında yeniden adlandırarak AYNEN taşı; özellik atlama, değer yuvarlama veya "iyileştirme" yapma
 
 ### widget-js
 - Vanilla JS, IIFE içinde

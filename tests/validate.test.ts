@@ -125,3 +125,13 @@ describe('checkDynamicMenu', () => {
     expect(checkDynamicMenu('x-elementor-widgets/widgets/class-hero.php', repeater)).toEqual([])
   })
 })
+
+describe('checkDynamicQuery', () => {
+  it('gömülü yazı listesini reddeder, WP_Query kullananı kabul eder', async () => {
+    const { checkDynamicQuery } = await import('@core/validate/elementor')
+    const path = 'x-elementor-widgets/widgets/class-post-list.php'
+    expect(checkDynamicQuery(path, "$items = array( array( 'title' => 'A' ) );")).toHaveLength(1)
+    expect(checkDynamicQuery(path, '$q = new \WP_Query( $args );')).toEqual([])
+    expect(checkDynamicQuery('x-elementor-widgets/widgets/class-hero.php', 'x')).toEqual([])
+  })
+})

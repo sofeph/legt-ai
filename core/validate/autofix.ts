@@ -126,6 +126,13 @@ export function autoFix(path: string, content: string): AutoFixResult {
       fixes.push(`namespace içinde tam sınıf adı: ${q.names.join(', ')}`)
     }
     if (/-elementor-widgets\/widgets\//.test(path.replace(/\\/g, '/'))) {
+      // Uydurma global sabitleri en yakın gerçek karşılığa: BODY/PARAGRAPH → TEXT, HEADING/TITLE → PRIMARY, SUBTITLE → SECONDARY
+      out = out.replace(/\b(Global_(?:Colors|Typography))::(COLOR|TYPOGRAPHY)_([A-Z_]+)\b/g, (whole, cls: string, kind: string, name: string) => {
+        if (['PRIMARY', 'SECONDARY', 'TEXT', 'ACCENT'].includes(name) || (kind === 'TYPOGRAPHY' && /^(NAME|GROUP_PREFIX)$/.test(name))) return whole
+        const to = /BODY|PARAGRAPH|CONTENT|DESCRIPTION|TEXT/.test(name) ? 'TEXT' : /SUB|SECONDARY|MUTED/.test(name) ? 'SECONDARY' : /ACCENT|LINK|BUTTON|HIGHLIGHT/.test(name) ? 'ACCENT' : 'PRIMARY'
+        fixes.push(`${cls}::${kind}_${name} → ${kind}_${to}`)
+        return `${cls}::${kind}_${to}`
+      })
       for (const [wrong, right] of Object.entries(ELEMENTOR_ALIASES)) {
         const re = new RegExp(`(\\$this->)${wrong}(\\s*\\()`, 'g')
         // Sınıf bu adla kendi metodunu tanımladıysa uydurma değildir

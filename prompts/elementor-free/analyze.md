@@ -21,6 +21,7 @@ Her bölüm: id, etiket, başlıklar, metin örnekleri, görsel sayısı, link s
 4. `js` alanı şunlardan biri: `none`, `slider`, `tabs`, `accordion`, `counter`, `sticky`, `modal`, `menu-toggle`, `custom`.
 5. Bölüm Pro özelliği gerektiriyorsa `proReplacement` alanına Free çözümünü yaz (`cpt-layout`, `custom-sticky`, `custom-form`, `wp-query-list`, `custom-modal`, `shortcode-template`). Gerekmiyorsa `null`.
 6. Header ve footer bölümleri de widget olur; `layout.header` ve `layout.footer` değeri `"widget"`.
+6a. Dinamik içerik: yazı/kart listeleri, kategori listeleri, ilgili/son yazılar, arşiv ve arama sonuçları, menüler `repeater` ile DEĞİL sorgu kontrolleriyle kurulur (`posts_per_page`, `category`, `order`, düzen); bunlar için `proReplacement` değeri `wp-query-list` olur ve `contentControls`'a yazı sayısı / kategori seçimi gibi sorgu ayarları girer. Menü için `menu` seçimi eklenir. `repeater` yalnızca WordPress'te karşılığı olmayan içeriğe (SSS, özellikler, istatistikler, slider) verilir.
 7. Token'larda emin olmadığın değeri uydurma; ön analizde yoksa boş bırak.
 8. Renk anahtarları Elementor Global'leriyle eşleşsin: `primary`, `secondary`, `text`, `accent`, gerekirse ek olarak `custom_1`, `custom_2`...
 9. `files` listesi YAZMA; dosya listesini uygulama bölümlerden kendisi üretir.

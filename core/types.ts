@@ -72,9 +72,25 @@ export interface ExtractedTokens {
   breakpoints: number[]
 }
 
+/** Örnek HTML'deki yazı kartlarından çıkarılan demo içerik (demo içe aktarıcı gerçek yazı olarak ekler) */
+export interface DemoPost {
+  title: string
+  excerpt: string
+  /** Görsel dosya adı (temanın medyasıyla eşleşirse öne çıkan görsel olur) */
+  image: string
+  category: string
+}
+
+export interface DemoContent {
+  posts: DemoPost[]
+  categories: string[]
+}
+
 export interface PreAnalysis {
   sections: SectionSummary[]
   tokens: ExtractedTokens
+  /** Eski projelerde yoktur */
+  demo?: DemoContent
 }
 
 // ---- plan.json ----

@@ -70,3 +70,37 @@ export function checkDynamicMenu(path: string, content: string): ValidationIssue
     }
   ]
 }
+
+const GLOBAL_CONSTANTS: Record<string, string[]> = {
+  Global_Colors: ['COLOR_PRIMARY', 'COLOR_SECONDARY', 'COLOR_TEXT', 'COLOR_ACCENT'],
+  Global_Typography: ['TYPOGRAPHY_PRIMARY', 'TYPOGRAPHY_SECONDARY', 'TYPOGRAPHY_TEXT', 'TYPOGRAPHY_ACCENT']
+}
+
+/** Uydurma Global_Colors / Global_Typography sabiti (ör. TYPOGRAPHY_BODY) çalışma anında ölümcül hata verir */
+export function checkGlobalConstants(content: string): ValidationIssue[] {
+  const issues: ValidationIssue[] = []
+  const seen = new Set<string>()
+  for (const m of content.matchAll(/\b(Global_Colors|Global_Typography)::([A-Z_]+)/g)) {
+    const valid = GLOBAL_CONSTANTS[m[1]]
+    if (valid.includes(m[2]) || seen.has(m[0])) continue
+    seen.add(m[0])
+    issues.push({
+      rule: 'elementor-api',
+      message: `Elementor'da olmayan sabit: ${m[0]} — geçerli olanlar: ${valid.map((v) => `${m[1]}::${v}`).join(', ')}`,
+      line: lineAt(content, m.index ?? 0)
+    })
+  }
+  return issues
+}
+
+/** Yazı/arşiv/ilgili yazı listesi widget'ı içeriği sorgudan değil gömülü öğelerden basıyorsa hata */
+export function checkDynamicQuery(path: string, content: string): ValidationIssue[] {
+  if (!/\/class-[\w-]*(post-list|post-grid|post-feed|posts|related|recent|archive-content|category-archive|search-results|blog)[\w-]*\.php$/.test(path)) return []
+  if (/\b(WP_Query|get_posts|have_posts|get_terms|wp_get_recent_posts|the_post|get_search_query)\b/.test(content)) return []
+  return [
+    {
+      rule: 'dynamic-content',
+      message: "Liste içeriği gömülü (statik): yazıları WP_Query/get_posts, kategorileri get_terms ile WordPress'ten oku; Repeater yalnızca yazı yokken boş durum için olabilir"
+    }
+  ]
+}

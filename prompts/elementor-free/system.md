@@ -22,7 +22,9 @@ Yerine:
 ## Kod kuralları
 - Elementor 3.5+ güncel API: `register_controls()`, `render()`, `content_template()`
 - YASAK: `_register_controls`, `Scheme_Color`, `Scheme_Typography`, `// ...`, "diğer kodlar", TODO, yer tutucu
-- Renk ve tipografi varsayılanları Global'lere bağlı (`Global_Colors::COLOR_PRIMARY` vb.)
+- Renk ve tipografi varsayılanları Global'lere bağlı. YALNIZCA şu sabitler vardır: `Global_Colors::COLOR_PRIMARY|COLOR_SECONDARY|COLOR_TEXT|COLOR_ACCENT`, `Global_Typography::TYPOGRAPHY_PRIMARY|TYPOGRAPHY_SECONDARY|TYPOGRAPHY_TEXT|TYPOGRAPHY_ACCENT`. Başka sabit (ör. `TYPOGRAPHY_BODY`) uydurma; sayfayı çökertir.
+- İçerik DİNAMİK olmalı: WordPress'in bildiği her şey (yazılar, kategoriler, menüler, site adı/logo, arama, yazar, tarih, yıl, sayfalama) WordPress API'sinden okunur, koda ya da Repeater'a gömülmez. Menüler için eklentide hazır `{{prefix}}_menu_options()` ve `{{prefix}}_render_menu( $menu_id, $konum, $sinif )` vardır (konumlar `primary`, `footer`); yazma. Düzenlenebilir metinler Elementor kontrolünden gelir.
+- GÖRÜNÜM kaynak HTML ile BİREBİR aynı olmalı: etiket yapısı, sınıf adları (`{{prefix}}-` önekli), boşluk, boyut, renk, font, kenarlık, gölge, hizalama, hover ve responsive davranış. Kaynak CSS değerlerini yuvarlama, sadeleştirme, "iyileştirme"; öğe ekleme/çıkarma/yeniden sıralama yapma.
 - `add_responsive_control` ile padding, margin, hizalama, kolon sayısı
 - Varsayılan değerler örnek HTML içeriğiyle birebir dolu
 - Asset'ler `get_style_depends()` / `get_script_depends()` ile

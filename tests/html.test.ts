@@ -78,3 +78,15 @@ describe('splitSections: çok sayfalı girdi', () => {
     expect(sections.find((s) => s.classes.includes('page-header'))?.role).toBe('content')
   })
 })
+
+describe('extractDemoContent', () => {
+  it('yazı kartlarından başlık, özet, görsel ve kategori çıkarır', async () => {
+    const { extractDemoContent } = await import('@core/html/demoContent')
+    const html = `<header><article><h2>Menü kartı</h2><p>x</p></article></header>
+      <section><article class="post-card"><span class="cat">Baskı</span><img src="img/a.png"><h3>PETG yapışma</h3><p>Tabla ısısı ve ilk katman.</p><a href="/a">Oku</a></article>
+      <article class="post-card"><h3>PETG yapışma</h3><p>tekrar</p></article></section>`
+    const r = extractDemoContent([{ name: 'index.html', kind: 'html', content: html }])
+    expect(r.posts).toEqual([{ title: 'PETG yapışma', excerpt: 'Tabla ısısı ve ilk katman.', image: 'a.png', category: 'Baskı' }])
+    expect(r.categories).toEqual(['Baskı'])
+  })
+})

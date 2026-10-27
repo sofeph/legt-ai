@@ -27,6 +27,7 @@ Onarım turu: {{attempt}}
 {{content}}
 
 ## Kurallar
+- İçeriği elle yazarak "düzeltme": yazı, kategori ve menüler `core/query`, `core/categories`, `core/navigation` gibi dinamik bloklarla kalsın. Görünüm sorunlarında kaynak HTML'e yaklaş, ondan uzaklaşma.
 - Yalnızca listelenen sorunları çöz; pattern slug'ını, `className`'leri ve preset slug'larını DEĞİŞTİRME (diğer dosyalar bunlara bağlı).
 - Blok işaretlemesi geçerli kalmalı: her `<!-- wp:x {...} -->` JSON'u geçerli, her blok kapanıyor, ham hex renk yok.
 - Taşma sorunlarında: sabit genişlik yerine `max-width: 100%`, `flex-wrap`, `minmax(0, 1fr)`; `{{tabletBp}}px` ve `{{mobileBp}}px` medya sorgularını kullan.

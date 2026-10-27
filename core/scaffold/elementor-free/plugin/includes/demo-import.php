@@ -4,7 +4,7 @@
  * Customizer seçimi, ana menü ve Elementor global renk/font'ları.
  *
  * Görünüm > {{name}} Demo sayfasından, etkinleştirme bildiriminden ya da WP-CLI ile:
- *   wp {{prefix}} demo-import [--no-front-page] [--no-menu] [--no-kit] [--no-media]
+ *   wp {{prefix}} demo-import [--no-front-page] [--no-menu] [--no-kit] [--no-media] [--no-content]
  *
  * Tekrar çalıştırılabilir: daha önce içe aktarılan kayıtlar silinmez, güncellenir.
  *
@@ -319,9 +319,84 @@ function {{prefix}}_demo_media() {
 }
 
 /**
+ * Örnek HTML'deki yazı kartlarından çıkan demo yazıları ve kategorileri ekler (tekrar çalıştırılabilir).
+ * Yazı içeriği WordPress'te durur; widget'lar WP_Query / get_terms ile dinamik okur.
+ *
+ * @return array{posts: int, categories: int}
+ */
+function {{prefix}}_demo_content() {
+	$result = array(
+		'posts'      => 0,
+		'categories' => 0,
+	);
+	$file   = {{PREFIX}}_EW_PATH . 'includes/demo-content.php';
+	$data   = is_readable( $file ) ? require $file : array();
+	if ( empty( $data['posts'] ) ) {
+		return $result;
+	}
+	$cats = array();
+	foreach ( (array) ( $data['categories'] ?? array() ) as $name ) {
+		$term = term_exists( $name, 'category' );
+		if ( ! $term ) {
+			$term = wp_insert_term( $name, 'category' );
+			if ( ! is_wp_error( $term ) ) {
+				$result['categories']++;
+			}
+		}
+		if ( ! is_wp_error( $term ) ) {
+			$cats[ $name ] = (int) ( is_array( $term ) ? $term['term_id'] : $term );
+		}
+	}
+	// Temanın medyasından (Medya Kütüphanesi'ne eklenmiş) dosya adına göre öne çıkan görsel
+	$media = array();
+	foreach ( get_posts( array( 'post_type' => 'attachment', 'post_status' => 'inherit', 'meta_key' => {{PREFIX}}_DEMO_META . '_media', 'posts_per_page' => -1 ) ) as $att ) {
+		$media[ basename( (string) get_post_meta( $att->ID, {{PREFIX}}_DEMO_META . '_media', true ) ) ] = $att->ID;
+	}
+	foreach ( (array) $data['posts'] as $i => $post ) {
+		$key      = 'post-' . ( $i + 1 );
+		$existing = get_posts(
+			array(
+				'post_type'      => 'post',
+				'post_status'    => 'any',
+				'meta_key'       => {{PREFIX}}_DEMO_META . '_post',
+				'meta_value'     => $key,
+				'posts_per_page' => 1,
+				'fields'         => 'ids',
+			)
+		);
+		if ( $existing ) {
+			continue;
+		}
+		$excerpt = sanitize_text_field( $post['excerpt'] );
+		$id      = wp_insert_post(
+			array(
+				'post_type'     => 'post',
+				'post_status'   => 'publish',
+				'post_title'    => sanitize_text_field( $post['title'] ),
+				'post_excerpt'  => $excerpt,
+				'post_content'  => '<!-- wp:paragraph --><p>' . esc_html( $excerpt ) . '</p><!-- /wp:paragraph -->',
+				'post_category' => isset( $cats[ $post['category'] ] ) ? array( $cats[ $post['category'] ] ) : array(),
+				'post_date'     => gmdate( 'Y-m-d H:i:s', time() - $i * DAY_IN_SECONDS ),
+			),
+			true
+		);
+		if ( is_wp_error( $id ) ) {
+			continue;
+		}
+		update_post_meta( $id, {{PREFIX}}_DEMO_META . '_post', $key );
+		$image = basename( (string) $post['image'] );
+		if ( $image && isset( $media[ $image ] ) ) {
+			set_post_thumbnail( $id, $media[ $image ] );
+		}
+		$result['posts']++;
+	}
+	return $result;
+}
+
+/**
  * Demo içeriğini içe aktarır.
  *
- * @param array $args front_page, menu, kit, media (varsayılan hepsi true).
+ * @param array $args front_page, menu, kit, media, content (varsayılan hepsi true).
  * @return array{created: string[], warnings: string[], errors: string[], home: int}
  */
 function {{prefix}}_demo_import( $args = array() ) {
@@ -332,6 +407,7 @@ function {{prefix}}_demo_import( $args = array() ) {
 			'menu'       => true,
 			'kit'        => true,
 			'media'      => true,
+			'content'    => true,
 		)
 	);
 	$report = array(
@@ -430,6 +506,15 @@ function {{prefix}}_demo_import( $args = array() ) {
 		}
 	}
 
+	// Medya yüklendikten sonra: yazılar ve kategoriler (öne çıkan görsel medyadan eşleşir)
+	if ( $args['content'] ) {
+		$content = {{prefix}}_demo_content();
+		if ( $content['posts'] || $content['categories'] ) {
+			/* translators: 1: yazı sayısı, 2: kategori sayısı */
+			$report['created'][] = sprintf( __( '%1$d demo yazı ve %2$d kategori eklendi', '{{textdomain}}' ), $content['posts'], $content['categories'] );
+		}
+	}
+
 	// Elementor CSS önbelleği yeni içerikle yeniden üretilsin
 	if ( class_exists( '\Elementor\Plugin' ) && isset( \Elementor\Plugin::$instance->files_manager ) ) {
 		\Elementor\Plugin::$instance->files_manager->clear_cache();
@@ -495,6 +580,7 @@ function {{prefix}}_demo_admin_page() {
 			<p><label><input type="checkbox" name="menu" value="1" checked> <?php echo esc_html__( 'Ana menüyü oluştur', '{{textdomain}}' ); ?></label></p>
 			<p><label><input type="checkbox" name="kit" value="1" checked> <?php echo esc_html__( 'Elementor global renk ve fontlarını ayarla', '{{textdomain}}' ); ?></label></p>
 			<p><label><input type="checkbox" name="media" value="1" checked> <?php echo esc_html__( 'Temayla gelen görsel ve videoları Medya Kütüphanesi\'ne ekle', '{{textdomain}}' ); ?></label></p>
+			<p><label><input type="checkbox" name="content" value="1" checked> <?php echo esc_html__( 'Örnek yazıları ve kategorileri ekle', '{{textdomain}}' ); ?></label></p>
 			<?php submit_button( $imported ? esc_html__( 'Demo içeriğini yeniden içe aktar', '{{textdomain}}' ) : esc_html__( 'Demo içeriğini içe aktar', '{{textdomain}}' ), 'primary', 'submit', true, $files ? array() : array( 'disabled' => 'disabled' ) ); ?>
 		</form>
 	</div>
@@ -512,6 +598,7 @@ function {{prefix}}_demo_handle_import() {
 			'menu'       => ! empty( $_POST['menu'] ),
 			'kit'        => ! empty( $_POST['kit'] ),
 			'media'      => ! empty( $_POST['media'] ),
+			'content'    => ! empty( $_POST['content'] ),
 		)
 	);
 	set_transient( '{{prefix}}_demo_report', $report, 300 );
@@ -569,6 +656,9 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 	 *
 	 * [--no-media]
 	 * : Temayla gelen medyayı Medya Kütüphanesi'ne ekleme.
+	 *
+	 * [--no-content]
+	 * : Örnek yazıları ve kategorileri ekleme.
 	 */
 	\WP_CLI::add_command(
 		'{{prefix}} demo-import',
@@ -579,6 +669,7 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 					'menu'       => \WP_CLI\Utils\get_flag_value( $assoc, 'menu', true ),
 					'kit'        => \WP_CLI\Utils\get_flag_value( $assoc, 'kit', true ),
 					'media'      => \WP_CLI\Utils\get_flag_value( $assoc, 'media', true ),
+					'content'    => \WP_CLI\Utils\get_flag_value( $assoc, 'content', true ),
 				)
 			);
 			foreach ( $report['created'] as $line ) {

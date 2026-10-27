@@ -29,6 +29,8 @@ Onarım turu: {{attempt}}
 {{content}}
 
 ## Kurallar
+- İçeriği asla koda gömerek "düzeltme": yazı/kategori/menü içeriği WordPress'ten (WP_Query, get_terms, `{{prefix}}_render_menu`) okunmaya devam etsin; yazı yoksa boş durum mesajı bas. Metin varsayılanları yalnızca Elementor kontrolünde olsun.
+- Görünüm sorunlarında kaynak HTML'e (yukarıdaki "Örnek HTML") yaklaş: sınıf adlarını, yapıyı ve CSS değerlerini değiştirerek kaynaktan uzaklaşma.
 - Yalnızca listelenen sorunları çöz; çalışan davranışı, kontrol id'lerini, sınıf ve handle adlarını DEĞİŞTİRME (diğer dosyalar bunlara bağlı).
 - Taşma sorunlarında: sabit genişlik yerine `max-width: 100%`, `flex-wrap`, `minmax(0, 1fr)`, uzun kelimeler için `overflow-wrap: anywhere`; `{{tabletBp}}px` ve `{{mobileBp}}px` medya sorgularını kullan.
 - JS sorunlarında: `elementorFrontend.hooks.addAction('frontend/element_ready/{{widgetName}}.default', ...)` içinde, kök elemana göre seç; editörde yeniden render'da da çalışsın.
