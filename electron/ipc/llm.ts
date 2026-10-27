@@ -7,6 +7,7 @@ import type { IntakeInput, LLMSettings, PreAnalysis } from '../../core/types'
 import type { LlmEvent } from '../api'
 import { promptsDir, scaffoldDir } from '../paths'
 import { loadSettings, store } from './fs'
+import { autoParallel } from './ollama'
 
 export const running = new Map<string, AbortController>()
 
@@ -73,6 +74,8 @@ export function registerLlmIpc(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle('projects:generate', (_e, id: string, only?: string[]) =>
     exclusive(id, async (signal) => {
       const settings = await requireModel()
+      // Yerel Ollama'da OLLAMA_NUM_PARALLEL paralel ajan sayısına getirilir (gerekirse yazılır, Ollama yeniden başlar)
+      await autoParallel(settings, (message) => void store().log(id, 'ollama-parallel', { system: '', user: '', response: message }))
       try {
         const state = await generate({
           provider: await createProvider(settings),

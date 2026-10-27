@@ -296,3 +296,27 @@ export type TestEvent =
   | { type: 'token'; source: string; chunk: string }
   | { type: 'round'; round: TestRound }
   | { type: 'site'; url: string | null }
+
+/** Ollama kurulum ekranının durumu (core/ollama/setup.ts) */
+export interface OllamaStatus {
+  platform: string
+  installed: boolean
+  exePath: string | null
+  /** baseUrl'e bağlanılabiliyor mu */
+  running: boolean
+  models: string[]
+  /** Kullanıcı ortamındaki OLLAMA_NUM_PARALLEL; ayarlı değilse null */
+  numParallel: number | null
+  /** Ayarlardaki paralel ajan sayısı */
+  wantedParallel: number
+  /** Kalıcı yazılamayan sistemler için elle çalıştırılacak komut */
+  manualCommand: string
+}
+
+export type OllamaStep = 'install' | 'start' | 'pull' | 'parallel'
+
+export type OllamaEvent =
+  | { type: 'step'; step: OllamaStep; message: string }
+  | { type: 'progress'; step: OllamaStep; percent: number; message: string }
+  | { type: 'done'; step: OllamaStep }
+  | { type: 'error'; step: OllamaStep; message: string }

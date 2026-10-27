@@ -115,3 +115,13 @@ class Widget_Hero extends \Elementor\Widget_Base {
     expect(checkPhpPrefix(src.replace(/\n$/, '\nfunction helper() {}\n'), 'urt').map((i) => i.message)).toEqual(['Önek eksik: global fonksiyon helper() (beklenen urt_...)'])
   })
 })
+
+describe('checkDynamicMenu', () => {
+  const repeater = "$this->add_control( 'items', array( 'type' => \Elementor\Controls_Manager::REPEATER ) );"
+  it('Repeater ile gömülü header menüsünü reddeder', async () => {
+    const { checkDynamicMenu } = await import('@core/validate/elementor')
+    expect(checkDynamicMenu('x-elementor-widgets/widgets/class-header.php', repeater)).toHaveLength(1)
+    expect(checkDynamicMenu('x-elementor-widgets/widgets/class-header.php', `${repeater} ut_render_menu( $s['menu'], 'primary', 'ut-menu' );`)).toEqual([])
+    expect(checkDynamicMenu('x-elementor-widgets/widgets/class-hero.php', repeater)).toEqual([])
+  })
+})

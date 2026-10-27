@@ -57,3 +57,16 @@ export function checkElementorApi(src: string): ValidationIssue[] {
   }
   return issues
 }
+
+/** Header/navbar/footer widget'ı menüyü yalnızca Repeater'dan basıyorsa: menü WordPress'ten yönetilmeli */
+export function checkDynamicMenu(path: string, content: string): ValidationIssue[] {
+  if (!/\/class-(?:[\w-]*-)?(header|navbar|nav|menu|footer)(?:-\d+)?\.php$/.test(path)) return []
+  if (!/Controls_Manager::REPEATER/.test(content) || /_render_menu\s*\(/.test(content)) return []
+  return [
+    {
+      rule: 'dynamic-menu',
+      message:
+        "Menü Repeater'a gömülmüş, WordPress menüsü kullanılmıyor: 'menu' SELECT kontrolü ('options' => <önek>_menu_options()) ekle ve render()'da <önek>_render_menu( $settings['menu'], 'primary' | 'footer', '<önek>-menu' ) çağır; false dönerse Repeater yedeğini bas"
+    }
+  ]
+}

@@ -1,9 +1,10 @@
 import { useEffect, useState, type JSX } from 'react'
 import { Badge, Button, Caption1, FluentProvider, Subtitle2, Tab, TabList, Text, Title3, Tooltip } from '@fluentui/react-components'
-import { AddRegular, ArrowExportRegular, BugRegular, CodeRegular, DocumentTextRegular, SettingsRegular, TableRegular } from '@fluentui/react-icons'
+import { AddRegular, ArrowExportRegular, BugRegular, CodeRegular, DocumentTextRegular, ServerRegular, SettingsRegular, TableRegular } from '@fluentui/react-icons'
 import { acrylic, appBackground, useSystemTheme } from './theme'
 import { useProject, type Page } from './store/project'
 import { SettingsDialog } from './components/SettingsDialog'
+import { OllamaSetup } from './components/OllamaSetup'
 import Intake from './pages/Intake'
 import PlanPage from './pages/Plan'
 import Generate from './pages/Generate'
@@ -22,10 +23,21 @@ export default function App(): JSX.Element {
   const { theme, dark } = useSystemTheme()
   const { page, setPage, current, projects, refreshProjects, open, newProject } = useProject()
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [setupOpen, setSetupOpen] = useState(false)
 
   useEffect(() => {
     void refreshProjects()
   }, [refreshProjects])
+
+  // Yerel Ollama kurulu değilse, çalışmıyorsa ya da modeli yoksa kurulum ekranı kendiliğinden açılır
+  useEffect(() => {
+    void (async () => {
+      const cfg = await window.legt.settings.get()
+      if (cfg.provider !== 'ollama' || !/^https?:\/\/(localhost|127\.0\.0\.1)/i.test(cfg.baseUrl)) return
+      const st = await window.legt.ollama.status()
+      if (!st.installed || !st.running || !st.models.length) setSetupOpen(true)
+    })()
+  }, [])
 
   const step = current?.state.step
   const enabled = (p: Page): boolean =>
@@ -63,6 +75,11 @@ export default function App(): JSX.Element {
               </Button>
             ))}
           </div>
+          <Tooltip content="Ollama'yı kur, başlat, model indir, paralel ayarla" relationship="description">
+            <Button appearance="subtle" icon={<ServerRegular />} onClick={() => setSetupOpen(true)}>
+              Ollama kurulumu
+            </Button>
+          </Tooltip>
           <Tooltip content="LLM bağlantısı ve model" relationship="description">
             <Button appearance="subtle" icon={<SettingsRegular />} onClick={() => setSettingsOpen(true)}>
               Ayarlar
@@ -95,6 +112,7 @@ export default function App(): JSX.Element {
         </main>
       </div>
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <OllamaSetup open={setupOpen} onClose={() => setSetupOpen(false)} />
     </FluentProvider>
   )
 }

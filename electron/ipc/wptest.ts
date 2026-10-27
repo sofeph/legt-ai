@@ -9,6 +9,7 @@ import { binaries, runtimePaths } from '../../core/wptest/runtime'
 import type { LlmEvent } from '../api'
 import { promptsDir, runtimeDir, wptestPhpDir, wptestWorkRoot } from '../paths'
 import { loadSettings, store } from './fs'
+import { autoParallel } from './ollama'
 import { exclusive, running } from './llm'
 
 /** keepAlive ile açık bırakılan siteler (proje başına bir tane) */
@@ -44,6 +45,7 @@ export function registerWptestIpc(getWindow: () => BrowserWindow | null): void {
     exclusive(id, async (signal) => {
       await stopSite(id)
       const settings = await loadSettings()
+      if (settings.model) await autoParallel(settings, (message) => void store().log(id, 'ollama-parallel', { system: '', user: '', response: message }))
       // Model seçili değilse yalnızca test: senaryo ve onarım yapılmaz
       const provider = settings.model ? await createProvider(settings) : null
       const { report, server } = await runLiveTest({

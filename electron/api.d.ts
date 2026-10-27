@@ -1,5 +1,5 @@
 // preload.ts'in window.legt'e açtığı API'nin tipi. Renderer yalnızca bunu görür.
-import type { GenEvent, IntakeInput, IntakeSource, LLMSettings, ModelInfo, Plan, PreAnalysis, ProjectMeta, ProjectState, QualityItem, RuntimeStatus, TestEvent, TestOptions, TestReport, ValidationIssue } from '../core/types'
+import type { GenEvent, IntakeInput, IntakeSource, LLMSettings, ModelInfo, OllamaEvent, OllamaStatus, Plan, PreAnalysis, ProjectMeta, ProjectState, QualityItem, RuntimeStatus, TestEvent, TestOptions, TestReport, ValidationIssue } from '../core/types'
 
 import type { PluginInfo, ProviderInfo } from '../core/plugins/types'
 import type { FolderScan } from '../core/types'
@@ -38,6 +38,17 @@ export interface LegtApi {
     listModels(s: LLMSettings): Promise<ModelInfo[]>
     cancel(projectId: string): Promise<void>
     onEvent(cb: (e: LlmEvent) => void): () => void
+  }
+  ollama: {
+    status(): Promise<OllamaStatus>
+    /** Windows: resmi yükleyiciyi indirip sessiz kurar; diğer sistemlerde indirme sayfasını açar */
+    install(): Promise<void>
+    start(): Promise<void>
+    pull(model: string): Promise<void>
+    /** OLLAMA_NUM_PARALLEL = paralel ajan sayısı (Windows'ta kalıcı), Ollama yeniden başlar */
+    applyParallel(): Promise<void>
+    cancel(): Promise<void>
+    onEvent(cb: (e: OllamaEvent) => void): () => void
   }
   projects: {
     list(): Promise<ProjectMeta[]>

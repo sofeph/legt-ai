@@ -49,9 +49,13 @@ Eklenti klasörünü **Ayarlar > Eklentiler > Klasör** ile açılan dizine kopy
 
 Tasarımdan bağımsız dosyalar (Elementor modunda `header.php`, `footer.php`, demo JSON'ları) şablondan üretilir, LLM'e gitmez. Modelin sık yaptığı, anlamı belli hatalar (namespace sırası, uydurma Elementor metotları gibi) onarım çağrısı harcanmadan kodla düzeltilir; kalanlar Elementor'un gerçek metot listesine karşı doğrulanıp net mesajla onarıma gider. Her çağrıda yalnızca üretilen dosya türünün kuralları gönderilir ve system mesajı projedeki tüm çağrılarda aynı kalır (önbellek dostu). "Kaldığı yerden devam et", daha önce tamam sayılmış dosyaları da güncel kurallarla yeniden kontrol eder.
 
+## Ollama kurulum ekranı
+
+Ollama kurulu değilse, çalışmıyorsa ya da modeli yoksa uygulama açılışta **Ollama kurulumu** ekranını gösterir (kenar çubuğundan da açılır): Ollama'yı kurar (Windows'ta resmi yükleyiciyi indirip sessiz kurar, diğer sistemlerde indirme sayfasını açar), servisi başlatır, model indirir ve paralel ayarı yazar. "Hepsini otomatik yap" bu adımları sırayla çalıştırır.
+
 ## Paralel ajanlar
 
-**Ayarlar > Paralel ajan** (1–10, varsayılan 3): bağımlılığı hazır dosyalar, canlı testteki senaryolar ve onarımlar aynı anda üretilir. Ollama'nın istekleri gerçekten paralel işlemesi için `OLLAMA_NUM_PARALLEL` en az bu değerde olmalı (her ajan ek bellek ister).
+**Ayarlar > Paralel ajan** (1–10, varsayılan 3): bağımlılığı hazır dosyalar, canlı testteki senaryolar ve onarımlar aynı anda üretilir. Ollama'nın istekleri gerçekten paralel işlemesi için `OLLAMA_NUM_PARALLEL` en az bu değerde olmalı (her ajan ek bellek ister). Yerel Ollama kullanılırken üretim ve canlı test başlarken `OLLAMA_NUM_PARALLEL` (+ `OLLAMA_FLASH_ATTENTION=1`, `OLLAMA_KV_CACHE_TYPE=q8_0`) otomatik kontrol edilir; yetersizse Windows'ta kalıcı yazılır ve Ollama yeniden başlatılır, diğer sistemlerde gereken komut gösterilir.
 
 ## Demo içe aktarma (Elementor modu)
 

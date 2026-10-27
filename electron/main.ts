@@ -2,6 +2,7 @@ import { app, BrowserWindow, nativeTheme, shell } from 'electron'
 import { join } from 'node:path'
 import { registerFsIpc } from './ipc/fs'
 import { registerLlmIpc } from './ipc/llm'
+import { registerOllamaIpc } from './ipc/ollama'
 import { registerPackageIpc } from './ipc/package'
 import { registerValidateIpc } from './ipc/validate'
 import { registerWptestIpc, shutdownWptest } from './ipc/wptest'
@@ -58,6 +59,7 @@ app.whenReady().then(async () => {
   registerPluginsIpc()
   registerFsIpc(getWindow)
   registerLlmIpc(getWindow)
+  registerOllamaIpc(getWindow)
   registerValidateIpc()
   registerPackageIpc(getWindow)
   registerWptestIpc(getWindow)

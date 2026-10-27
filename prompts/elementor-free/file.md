@@ -31,6 +31,7 @@ Dosya türü: {{fileKind}}   <!-- widget-php | widget-css | widget-js | theme-cs
   - `add_responsive_control`: padding, margin, hizalama, varsa kolon sayısı ve boşluk
   - Bölüm JS içeriyorsa davranış ayarları (otomatik oynatma, hız, sticky açık/kapalı vb.)
   - "Ek CSS sınıfı" TEXT kontrolü
+  - Header/navbar/footer gibi menü içeren widget'ta menü ASLA yalnızca Repeater ile gömülmez: `menu` SELECT kontrolü (`'options' => {{prefix}}_menu_options()`) ekle ve `render()`'da `if ( ! {{prefix}}_render_menu( $settings['menu'], 'primary', '{{prefix}}-menu' ) ) { /* Repeater yedek öğeleri */ }` kullan (footer menüsü için konum `'footer'`). Fonksiyonlar eklentide hazırdır, yazma. `content_template()` yedek öğeleri gösterir.
   - Varsayılanlar kaynak HTML'deki metin, görsel URL'si ve öğe sayısıyla birebir
 - `render()`: `get_settings_for_display()`, kaynak HTML'in yapısını koru, sınıfları `{{prefix}}-` önekiyle yeniden adlandır, her çıktıyı escape et, `add_render_attribute` kullan
 - `content_template()`: `render()` ile aynı çıktıyı veren Underscore/Backbone şablonu

@@ -48,8 +48,11 @@ legt-ai/
 │       ├── validate.ts         # php -l, JSON parse, yasaklı kalıp taraması
 │       ├── package.ts          # zip üretimi
 │       ├── wptest.ts           # canlı test: çalıştır, rapor, ekran görüntüsü, açık site
-│       └── plugins.ts          # eklentileri yükle, aç/kapa, sağlayıcı listesi
+│       ├── plugins.ts          # eklentileri yükle, aç/kapa, sağlayıcı listesi
+│       └── ollama.ts           # Ollama kurulum ekranı IPC'si, üretim/test öncesi otomatik OLLAMA_NUM_PARALLEL
 ├── core/
+│   ├── ollama/
+│   │   └── setup.ts            # Ollama bul/kur/başlat, model indir, OLLAMA_NUM_PARALLEL yaz + yeniden başlat
 │   ├── llm/
 │   │   ├── ollama.ts           # /api/chat, num_ctx, stream
 │   │   └── openaiCompat.ts     # /v1/chat/completions

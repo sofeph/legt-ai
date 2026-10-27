@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import type { OllamaEvent } from '../core/types'
 import type { LegtApi, LlmEvent } from './api'
 
 const invoke = <T>(channel: string, ...args: unknown[]): Promise<T> => ipcRenderer.invoke(channel, ...args) as Promise<T>
@@ -21,6 +22,19 @@ const api: LegtApi = {
       const listener = (_: unknown, e: LlmEvent): void => cb(e)
       ipcRenderer.on('llm:event', listener)
       return () => ipcRenderer.removeListener('llm:event', listener)
+    }
+  },
+  ollama: {
+    status: () => invoke('ollama:status'),
+    install: () => invoke('ollama:install'),
+    start: () => invoke('ollama:start'),
+    pull: (model) => invoke('ollama:pull', model),
+    applyParallel: () => invoke('ollama:applyParallel'),
+    cancel: () => invoke('ollama:cancel'),
+    onEvent: (cb) => {
+      const listener = (_: unknown, e: OllamaEvent): void => cb(e)
+      ipcRenderer.on('ollama:event', listener)
+      return () => ipcRenderer.removeListener('ollama:event', listener)
     }
   },
   projects: {

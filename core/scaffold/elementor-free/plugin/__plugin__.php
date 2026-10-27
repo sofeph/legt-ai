@@ -54,6 +54,7 @@ function {{prefix}}_ew_init() {
 	// Layout CPT'si ve kısa kod Elementor kapalıyken de kayıtlı kalır; içerik kaybolmaz.
 	require_once {{PREFIX}}_EW_PATH . 'includes/layout-cpt.php';
 	require_once {{PREFIX}}_EW_PATH . 'includes/shortcode.php';
+	require_once {{PREFIX}}_EW_PATH . 'includes/menu.php';
 	// Demo içe aktarıcı Elementor kapalıyken de görünür; içeriği kaydeder, eksikliği bildirir.
 	require_once {{PREFIX}}_EW_PATH . 'includes/demo-import.php';
 
