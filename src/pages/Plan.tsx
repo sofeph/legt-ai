@@ -22,7 +22,9 @@ import { AddRegular, CheckmarkRegular, DeleteRegular, DismissRegular, FolderOpen
 import type { BlockSection, ElementorSection, Plan, PlanFile } from '../../core/types'
 import { useProject } from '../store/project'
 
-const list = (v: string[] | undefined): string => (v ?? []).join(', ')
+/** Eski planlarda kontroller nesne olabilir ({ id, ... }); ekranda ad olarak gösterilir */
+const list = (v: unknown[] | undefined): string =>
+  (v ?? []).map((c) => (typeof c === 'string' ? c : c && typeof c === 'object' ? String((c as Record<string, unknown>).id ?? (c as Record<string, unknown>).name ?? (c as Record<string, unknown>).key ?? '') : String(c ?? ''))).filter(Boolean).join(', ')
 const unlist = (s: string): string[] => s.split(',').map((x) => x.trim()).filter(Boolean)
 
 export default function PlanPage(): JSX.Element {

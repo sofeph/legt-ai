@@ -1,0 +1,754 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>İstanbul Boğaz Gecesi</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gloock&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: sabit üst menü; ana sayfa = canvas köprü sahnesi + künye + semtler + rehberden yazılar; #blog = yazı listesi; #yazi-* = okuma sayfası */
+:root{
+  --night:#0d0a12;
+  --night-2:#16101d;
+  --night-3:#1e1626;
+  --ink:#f3e9ee;
+  --mute:#a99aa6;
+  --rose:#ff5fa8;
+  --amber:#ffa24a;
+  --teal:#5fd6c8;
+  --line:#2c2132;
+  --display:"Gloock", "Georgia", serif;
+  --body:"Figtree", system-ui, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--night);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.6;overflow-x:hidden}
+a{color:inherit}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--amber)}
+h2{font-family:var(--display);font-weight:400;font-size:clamp(34px, 5vw, 58px);line-height:1.05;margin:.2em 0 .5em;text-wrap:balance}
+p{max-width:62ch}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+
+/* ÜST MENÜ */
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top, 0px);z-index:10;background:var(--night)}
+.topbar{position:sticky;top:env(safe-area-inset-top, 0px);z-index:9;background:rgba(13,10,18,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.topbar .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;height:58px}
+.brand{font-family:var(--display);font-size:22px;text-decoration:none;display:flex;align-items:center;gap:10px}
+.brand i{width:9px;height:9px;border-radius:50%;background:var(--rose);box-shadow:0 0 12px var(--rose)}
+.nav{display:flex;gap:4px}
+.nav a{text-decoration:none;font-size:14px;font-weight:500;padding:7px 12px;border-radius:999px;color:var(--mute);transition:color .2s, background .2s}
+.nav a:hover{color:var(--ink)}
+.nav a[aria-current="page"]{color:var(--ink);background:var(--night-3)}
+
+/* HERO */
+.hero{position:relative;height:min(84vh, 720px);min-height:460px;overflow:hidden;background:var(--night)}
+#scene{position:absolute;inset:0;width:100%;height:100%;display:block}
+.hero-copy{position:absolute;left:0;right:0;top:0;padding-top:clamp(24px, 6vh, 64px)}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(52px, 11vw, 148px);line-height:.9;margin:.15em 0 .1em;letter-spacing:-.01em;text-wrap:balance}
+h1 span{display:inline-block;animation:rise 1.2s cubic-bezier(.2,.7,.2,1) both}
+h1 span:nth-child(2){animation-delay:.12s;color:var(--rose);font-style:italic}
+.lede{max-width:34ch;color:var(--mute);font-size:clamp(15px, 1.6vw, 18px);animation:rise 1.2s .3s both}
+@keyframes rise{from{transform:translateY(18px);opacity:.25}to{transform:none;opacity:1}}
+.controls{position:absolute;left:0;right:0;bottom:18px}
+.controls .wrap{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.controls .label{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-right:6px}
+.chip{font:500 13px var(--body);color:var(--ink);background:rgba(13,10,18,.55);border:1px solid var(--line);border-radius:999px;padding:7px 14px;cursor:pointer;backdrop-filter:blur(6px);display:inline-flex;gap:8px;align-items:center;transition:border-color .2s, background .2s}
+.chip i{width:10px;height:10px;border-radius:50%;display:block}
+.chip:hover{border-color:var(--mute)}
+.chip[aria-pressed="true"]{border-color:var(--rose);background:rgba(255,95,168,.14)}
+
+section{padding-block:clamp(56px, 9vw, 110px)}
+.intro{display:grid;grid-template-columns:1.1fr 1fr;gap:clamp(24px, 5vw, 72px);align-items:start}
+.intro > *{min-width:0}
+.intro p{color:var(--mute)}
+.intro p strong{color:var(--ink);font-weight:600}
+.pull{font-family:var(--display);font-size:clamp(24px, 3vw, 34px);line-height:1.2;border-left:2px solid var(--rose);padding-left:20px;margin:0}
+
+.band{background:var(--night-2);border-block:1px solid var(--line)}
+.spec-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(170px, 1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-top:28px}
+.cell{background:var(--night-2);padding:22px 20px}
+.cell .k{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+.cell .v{font-family:var(--display);font-size:clamp(34px, 4vw, 46px);line-height:1.1;margin-top:6px;font-variant-numeric:tabular-nums}
+.cell .v small{font-family:var(--mono);font-size:14px;color:var(--amber);margin-left:4px}
+.anniv{margin-top:28px;display:flex;flex-wrap:wrap;gap:12px 28px;align-items:baseline;font-family:var(--mono);font-size:14px;color:var(--mute)}
+.anniv b{color:var(--rose);font-weight:500}
+#count{color:var(--ink);font-variant-numeric:tabular-nums}
+
+.districts{list-style:none;padding:0;margin:28px 0 0;border-top:1px solid var(--line)}
+.districts li{display:grid;grid-template-columns:3.5em minmax(0, 1fr) auto;gap:16px;align-items:baseline;padding:20px 4px;border-bottom:1px solid var(--line);transition:background .3s, padding .3s}
+.districts li:hover{background:linear-gradient(90deg, rgba(255,95,168,.08), transparent 70%);padding-left:14px}
+.side{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--amber)}
+.districts h3{font-family:var(--display);font-weight:400;font-size:clamp(24px, 3vw, 32px);margin:0;line-height:1.1}
+.districts p{margin:4px 0 0;color:var(--mute);font-size:15px}
+.coord{font-family:var(--mono);font-size:12px;color:var(--mute);white-space:nowrap;font-variant-numeric:tabular-nums}
+
+.sec-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:end;gap:12px}
+.sec-head h2{margin-bottom:0}
+.more{font-family:var(--mono);font-size:13px;color:var(--rose);text-decoration:none;border-bottom:1px solid currentColor;padding-bottom:2px}
+
+/* YAZI KARTLARI */
+.posts{display:grid;grid-template-columns:repeat(auto-fill, minmax(min(100%, 300px), 1fr));gap:36px 28px;margin-top:32px}
+.post{display:flex;flex-direction:column;text-decoration:none;min-width:0}
+.cover{position:relative;aspect-ratio:16/9;max-width:100%;border-radius:4px;overflow:hidden;background:var(--night-3)}
+.cover canvas{width:100%;height:100%;display:block;transition:transform .6s cubic-bezier(.2,.7,.2,1)}
+.post:hover .cover canvas{transform:scale(1.04)}
+.cover .tag{position:absolute;left:12px;top:12px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;background:rgba(13,10,18,.75);padding:4px 9px;border-radius:3px}
+.post h3{font-family:var(--display);font-weight:400;font-size:26px;line-height:1.15;margin:16px 0 8px;text-wrap:balance;transition:color .2s}
+.post:hover h3{color:var(--rose)}
+.post p{color:var(--mute);font-size:15px;margin:0 0 12px}
+.meta{font-family:var(--mono);font-size:12px;color:var(--mute);margin-top:auto;display:flex;gap:14px}
+
+/* BLOG LİSTE */
+.page-head{padding-block:clamp(40px, 7vw, 80px) 0}
+.page-head p{color:var(--mute)}
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+
+/* YAZI SAYFASI */
+.article{padding-block:clamp(32px, 6vw, 64px) clamp(56px, 8vw, 96px)}
+.crumb{font-family:var(--mono);font-size:12px;color:var(--mute);display:flex;gap:8px;flex-wrap:wrap}
+.crumb a{color:var(--rose);text-decoration:none}
+.article h1{font-size:clamp(40px, 6.5vw, 76px);line-height:1;margin:.3em 0 .25em;max-width:18ch}
+.article .a-lede{font-size:clamp(18px, 2vw, 21px);color:var(--mute);max-width:52ch;margin:0}
+.article .meta{margin-top:20px}
+.article .cover{margin-top:32px;aspect-ratio:21/8}
+.a-grid{display:grid;grid-template-columns:minmax(0, 1fr) 260px;gap:clamp(28px, 5vw, 64px);margin-top:40px;align-items:start}
+.a-body{min-width:0}
+.a-body h2{font-size:clamp(26px, 3.2vw, 34px);margin:1.6em 0 .4em}
+.a-body h2:first-child{margin-top:0}
+.a-body p,.a-body li{color:#d9ccd4}
+.a-body ul{padding-left:1.1em;max-width:62ch}
+.a-body li{margin-bottom:.4em}
+.a-body li::marker{color:var(--rose)}
+.a-body strong{color:var(--ink)}
+.tip{border:1px solid var(--line);border-left:3px solid var(--teal);background:var(--night-2);padding:16px 20px;margin:24px 0;max-width:62ch}
+.tip .k{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);margin-bottom:4px}
+.tip p{margin:0;color:var(--ink)}
+.toc{position:sticky;top:calc(env(safe-area-inset-top, 0px) + 82px);border-top:1px solid var(--line);padding-top:16px}
+.toc .k{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-bottom:10px}
+.toc ol{list-style:none;padding:0;margin:0;display:grid;gap:8px}
+.toc button{all:unset;cursor:pointer;font-size:14px;color:var(--mute);line-height:1.35}
+.toc button:hover{color:var(--ink)}
+.toc button:focus-visible{outline:2px solid var(--amber)}
+.pn{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:56px;border-top:1px solid var(--line);padding-top:24px}
+.pn a{text-decoration:none;min-width:0}
+.pn a:last-child{text-align:right}
+.pn small{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+.pn span{font-family:var(--display);font-size:20px;line-height:1.2}
+.pn a:hover span{color:var(--rose)}
+
+footer{border-top:1px solid var(--line);padding-block:32px;font-family:var(--mono);font-size:12px;color:var(--mute)}
+footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px}
+
+.view{animation:fadein .5s ease both}
+@keyframes fadein{from{transform:translateY(8px)}to{transform:none}}
+
+@media (max-width:860px){
+  .a-grid{grid-template-columns:minmax(0,1fr)}
+  .toc{position:static;order:-1}
+}
+@media (max-width:760px){
+  .intro{grid-template-columns:1fr}
+  .districts li{grid-template-columns:minmax(0,1fr)}
+  .coord{white-space:normal}
+  .brand span{display:none}
+  .nav a{padding:7px 9px}
+}
+@media (prefers-reduced-motion:reduce){
+  h1 span,.lede,.view{animation:none}
+  .cover canvas{transition:none}
+}
+</style>
+
+<nav class="topbar" aria-label="Ana menü">
+  <div class="wrap">
+    <a class="brand" href="#ana"><i></i><span>İstanbul</span></a>
+    <div class="nav">
+      <a href="#ana" data-nav="ana">Ana sayfa</a>
+      <a href="#blog" data-nav="blog">Rehber</a>
+      <a href="#yazi-pratik" data-nav="pratik">Pratik bilgi</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ANA SAYFA -->
+<div id="v-ana" class="view">
+  <header class="hero" aria-label="Boğaz'da gece">
+    <canvas id="scene" aria-hidden="true"></canvas>
+    <div class="hero-copy">
+      <div class="wrap">
+        <div class="eyebrow">41.0451° K · 29.0341° D — Ortaköy / Beylerbeyi</div>
+        <h1><span>İstanbul</span> <span>gecesi</span></h1>
+        <p class="lede">Avrupa ile Asya arasında 1.074 metrelik bir ışık çizgisi. Boğaz uyumaz, sadece rengini değiştirir.</p>
+      </div>
+    </div>
+    <div class="controls">
+      <div class="wrap" role="group" aria-label="Köprü ışık rengi">
+        <span class="label">Köprü ışığı</span>
+        <button class="chip" id="th-rose" data-theme-key="rose" aria-pressed="true"><i style="background:#ff5fa8"></i>Pembe</button>
+        <button class="chip" id="th-red" data-theme-key="red" aria-pressed="false"><i style="background:#ff3b30"></i>Kırmızı</button>
+        <button class="chip" id="th-teal" data-theme-key="teal" aria-pressed="false"><i style="background:#3fe0d0"></i>Turkuaz</button>
+        <button class="chip" id="th-rainbow" data-theme-key="rainbow" aria-pressed="false"><i style="background:conic-gradient(#f55,#fd5,#5f9,#5bf,#c5f,#f55)"></i>Gökkuşağı</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <div class="wrap intro">
+        <div>
+          <div class="eyebrow">İki kıta, tek şehir</div>
+          <h2>Boğaz'ın üstünde, şehrin ortasında</h2>
+          <p><strong>İstanbul</strong> 2.700 yılı aşkın süredir aynı suyun iki yakasında yaşıyor. Byzantion, Konstantinopolis, Dersaadet; isimler değişti, Boğaz'ın akıntısı değişmedi.</p>
+          <p>Gece olduğunda köprünün askı halatları yanar, Ortaköy Camii'nin kubbesi suya yansır ve karşı kıyıda Beylerbeyi'nin ışıkları tepelere tırmanır.</p>
+        </div>
+        <blockquote class="pull">Sabah Avrupa'da kahve, öğlen Asya'da balık ekmek. İstanbul'da kıta değiştirmek bir vapur bileti kadar sıradan.</blockquote>
+      </div>
+    </section>
+
+    <section class="band">
+      <div class="wrap">
+        <div class="eyebrow">Köprü künyesi</div>
+        <h2>15 Temmuz Şehitler Köprüsü</h2>
+        <div class="spec-grid">
+          <div class="cell"><div class="k">Açılış</div><div class="v">1973<small>30 Eki</small></div></div>
+          <div class="cell"><div class="k">Ana açıklık</div><div class="v">1.074<small>m</small></div></div>
+          <div class="cell"><div class="k">Toplam uzunluk</div><div class="v">1.560<small>m</small></div></div>
+          <div class="cell"><div class="k">Kule yüksekliği</div><div class="v">165<small>m</small></div></div>
+          <div class="cell"><div class="k">Deniz seviyesinden</div><div class="v">64<small>m</small></div></div>
+        </div>
+        <div class="anniv">
+          <span>Açılış yıl dönümü: <b id="anniv-no">53.</b> yıl</span>
+          <span id="count">—</span>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <div class="eyebrow">Kıyı kıyı</div>
+        <h2>Gece yürünecek semtler</h2>
+        <ul class="districts">
+          <li><span class="side">Avr.</span><div><h3>Ortaköy</h3><p>Köprünün tam altında barok cami, kumpir tezgâhları ve suya inen merdivenler.</p></div><span class="coord">41.047° K 29.027° D</span></li>
+          <li><span class="side">Asya</span><div><h3>Beylerbeyi</h3><p>Sarayın rıhtımından köprüyü karşıdan izlemek için şehrin en sakin noktası.</p></div><span class="coord">41.042° K 29.040° D</span></li>
+          <li><span class="side">Avr.</span><div><h3>Galata</h3><p>Kuleden Haliç'e inen yokuşlar, gece yarısına kadar açık meyhaneler.</p></div><span class="coord">41.025° K 28.974° D</span></li>
+          <li><span class="side">Avr.</span><div><h3>Sultanahmet</h3><p>Ayasofya ile Sultanahmet Camii arasında ışıklandırılmış meydan.</p></div><span class="coord">41.005° K 28.976° D</span></li>
+          <li><span class="side">Asya</span><div><h3>Kadıköy</h3><p>Moda sahilinde gün batımı, ardından Bahariye'de kalabalık bir akşam.</p></div><span class="coord">40.990° K 29.029° D</span></li>
+          <li><span class="side">Asya</span><div><h3>Üsküdar</h3><p>Kız Kulesi'ne bakan sahilde çay, karşıda Tarihi Yarımada'nın siluet ışıkları.</p></div><span class="coord">41.022° K 29.013° D</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="band">
+      <div class="wrap">
+        <div class="sec-head">
+          <div><div class="eyebrow">Gezi rehberi</div><h2>Rehberden son yazılar</h2></div>
+          <a class="more" href="#blog">Tüm yazılar →</a>
+        </div>
+        <div class="posts" id="home-posts"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- BLOG LİSTE -->
+<div id="v-blog" class="view" hidden>
+  <div class="wrap page-head">
+    <div class="eyebrow">İstanbul gezi rehberi</div>
+    <h2>Şehri tanımak için yazılar</h2>
+    <p>Ulaşımdan Boğaz turuna, sokak lezzetlerinden cami ziyaret kurallarına kadar ilk kez gelenler için hazırlanmış rehber yazıları.</p>
+    <div class="filters" role="group" aria-label="Kategori">
+      <button class="chip" id="f-all" data-filter="" aria-pressed="true">Tümü</button>
+      <button class="chip" id="f-ulasim" data-filter="Ulaşım" aria-pressed="false">Ulaşım</button>
+      <button class="chip" id="f-gezi" data-filter="Gezi" aria-pressed="false">Gezi</button>
+      <button class="chip" id="f-lezzet" data-filter="Lezzet" aria-pressed="false">Lezzet</button>
+      <button class="chip" id="f-pratik" data-filter="Pratik" aria-pressed="false">Pratik</button>
+    </div>
+  </div>
+  <div class="wrap" style="padding-block:0 clamp(56px, 8vw, 96px)">
+    <div class="posts" id="blog-posts"></div>
+  </div>
+</div>
+
+<!-- YAZI -->
+<div id="v-yazi" class="view" hidden>
+  <article class="wrap article" id="article"></article>
+</div>
+
+<footer>
+  <div class="wrap">
+    <span>İstanbul · Boğaziçi gezi rehberi</span>
+    <span>Saat ve ücretler değişebilir; gitmeden önce resmî kaynaklardan kontrol edin.</span>
+  </div>
+</footer>
+
+<script>
+/* ---------- YAZILAR ---------- */
+const POSTS = [
+{
+  id:'ulasim', cat:'Ulaşım', hue:200, read:7, date:'27 Ekim 2026',
+  title:'İstanbul\'da ulaşım: İstanbulkart\'tan vapura',
+  lede:'Metro, Marmaray, metrobüs ve vapuru tek kartla kullanmak için bilmen gereken her şey.',
+  body:`
+<h2>İstanbulkart al</h2>
+<p>Şehirdeki neredeyse tüm toplu taşıma <strong>İstanbulkart</strong> ile ödenir: metro, tramvay, metrobüs, otobüs, Marmaray, füniküler ve şehir hatları vapurları. Kartı metro ve iskele girişlerindeki sarı otomatlardan ya da büfelerden alıp yükleyebilirsin.</p>
+<ul>
+<li>Tek kartla birden fazla kişi basabilir; arkadaşınla ayrı kart almak zorunda değilsin.</li>
+<li>Kısa süre içinde yapılan aktarmalar indirimlidir, bu yüzden tek bilet yerine kartla yolculuk daha ucuza gelir.</li>
+<li>Bakiyeyi otomatlardan veya resmî İstanbulkart uygulamasından görebilirsin.</li>
+</ul>
+<div class="tip"><div class="k">İpucu</div><p>Ücretler yılda birkaç kez güncelleniyor. Güncel tarifeyi gitmeden önce Metro İstanbul ve İETT'nin resmî sitelerinden kontrol et.</p></div>
+<h2>Havalimanından şehre</h2>
+<ul>
+<li><strong>İstanbul Havalimanı (IST):</strong> M11 metrosu Gayrettepe'ye bağlanır, oradan M2 ile Taksim'e geçilir. Havaist otobüsleri de şehrin birçok noktasına gider.</li>
+<li><strong>Sabiha Gökçen (SAW):</strong> M4 metrosu havalimanından Kadıköy'e iner. Havabus seferleri Taksim ve Kadıköy'e çalışır.</li>
+</ul>
+<h2>Kıtalar arası geçiş</h2>
+<p><strong>Marmaray</strong> Boğaz'ın altındaki tüp tünelden geçerek Avrupa ile Asya'yı birkaç dakikada birbirine bağlar. Sirkeci, Yenikapı ve Üsküdar en çok kullanılan duraklardır.</p>
+<p>Daha keyifli olanı ise vapur. Eminönü, Karaköy, Beşiktaş, Kadıköy ve Üsküdar iskeleleri arasında gün boyu sefer var. Yolculuk kısa ama Boğaz manzarası her seferinde değişir.</p>
+<h2>Turistik hatlar</h2>
+<ul>
+<li><strong>T1 tramvayı:</strong> Kabataş'tan Sultanahmet, Kapalıçarşı ve Beyazıt'a gider; Tarihi Yarımada gezisinin ana hattı.</li>
+<li><strong>F1 füniküleri:</strong> Kabataş'tan Taksim'e yokuşu çıkmadan ulaştırır.</li>
+<li><strong>Tünel:</strong> 1875'ten beri Karaköy ile Beyoğlu arasında çalışan, dünyanın en eski yeraltı hatlarından biri.</li>
+<li><strong>Metrobüs:</strong> Kendi şeridinde çalıştığı için trafikte hızlıdır ve gece boyunca sefer yapar.</li>
+</ul>
+<h2>Taksi</h2>
+<p>Taksiler taksimetreyle çalışır; binerken taksimetrenin açıldığından emin ol. BiTaksi gibi uygulamalar rotayı ve tahmini ücreti önceden gösterdiği için ilk kez gelenler için daha rahattır.</p>`
+},
+{
+  id:'bogaz-turu', cat:'Gezi', hue:330, read:6, date:'25 Ekim 2026',
+  title:'Boğaz turu: vapurla iki kıta arasında yarım gün',
+  lede:'Eminönü\'nden Anadolu Kavağı\'na uzanan klasik rota, kısa turlar ve gün batımı saatleri.',
+  body:`
+<h2>Hangi turu seçmeli?</h2>
+<p>Boğaz'ı görmenin en ekonomik yolu Şehir Hatları'nın düzenli turları. Özel tekne turları daha kısa ve esnek, ama aynı manzarayı daha kalabalık bir güvertede değil daha pahalıya izlersin.</p>
+<ul>
+<li><strong>Uzun Boğaz Turu:</strong> Eminönü'nden kalkar, iki yakadaki iskelelere uğrayarak Karadeniz'in ağzındaki Anadolu Kavağı'na kadar gider. Günde genelde tek gidiş-dönüş seferi vardır.</li>
+<li><strong>Kısa Boğaz Turu:</strong> Yaklaşık iki saatlik, aktarmasız bir gidiş-dönüş. Zamanı kısıtlı olanlar için ideal.</li>
+<li><strong>Normal vapur:</strong> Beşiktaş–Üsküdar ya da Karaköy–Kadıköy gibi hatlarla da kısa bir Boğaz deneyimi yaşanır.</li>
+</ul>
+<h2>Yol boyunca neler görülür?</h2>
+<ul>
+<li>Dolmabahçe Sarayı ve Çırağan Sarayı'nın denize bakan cepheleri</li>
+<li>Ortaköy Camii ve hemen arkasında 15 Temmuz Şehitler Köprüsü</li>
+<li>Beylerbeyi Sarayı ve Asya yakasının yalıları</li>
+<li>Rumeli Hisarı ile Anadolu Hisarı'nın karşılıklı surları</li>
+<li>Fatih Sultan Mehmet Köprüsü ve kuzeyde Yavuz Sultan Selim Köprüsü</li>
+</ul>
+<h2>Anadolu Kavağı'nda mola</h2>
+<p>Uzun turda vapur Anadolu Kavağı'nda birkaç saat bekler. İskeleden yokuşu çıkarak <strong>Yoros Kalesi</strong>'ne yürüyebilir, Boğaz'ın Karadeniz'e açıldığı noktayı yukarıdan görebilirsin. Dönüşten önce iskeledeki balıkçılarda öğle yemeği klasik bir rutin.</p>
+<div class="tip"><div class="k">İpucu</div><p>İskele tarafındaki koltuklar hızla dolar. Avrupa yakasını görmek için gidişte sol tarafa, Asya yakası için sağ tarafa otur.</p></div>
+<h2>Ne zaman gitmeli?</h2>
+<p>İlkbahar ve sonbahar en rahat dönem. Yazın güverte çok sıcak olabilir; kışın ise rüzgârlı havada kapalı salonda oturmak gerekir. Akşamüstü kalkan bir vapurla dönüşte köprü ışıklarının yandığını görmek turun en güzel anı olur.</p>`
+},
+{
+  id:'tarihi-yarimada', cat:'Gezi', hue:28, read:8, date:'22 Ekim 2026',
+  title:'Tarihi Yarımada\'da bir gün: rota ve kurallar',
+  lede:'Ayasofya, Sultanahmet, Topkapı ve Kapalıçarşı\'yı yorulmadan tek günde görmek için sıralı plan.',
+  body:`
+<h2>Sabah: Sultanahmet Meydanı</h2>
+<p>Güne erken başla. Kalabalık saat ilerledikçe artıyor. <strong>Ayasofya</strong> ve <strong>Sultanahmet Camii</strong> karşı karşıya, aralarında yürüyerek iki dakika var. Her ikisi de ibadete açık cami olduğu için namaz vakitlerinde ziyaretçi girişi kısa süre kapanır.</p>
+<p>Hemen yanındaki <strong>Yerebatan Sarnıcı</strong>, Bizans döneminden kalan yüzlerce sütunuyla serin bir mola sunar.</p>
+<h2>Öğle: Topkapı Sarayı</h2>
+<p>Osmanlı padişahlarının yaklaşık dört yüzyıl yaşadığı saray, en az iki-üç saat ister. Harem bölümü ayrıca gezilir. Sarayın en uç noktasından Boğaz ile Marmara'nın birleştiği yer görünür.</p>
+<div class="tip"><div class="k">Dikkat</div><p>Topkapı Sarayı salı günleri kapalıdır. Planını buna göre yap ve giriş saatlerini resmî müze sitesinden kontrol et.</p></div>
+<h2>Öğleden sonra: çarşılar</h2>
+<ul>
+<li><strong>Kapalıçarşı:</strong> Dünyanın en eski ve büyük kapalı çarşılarından biri. Pazar günleri kapalıdır.</li>
+<li><strong>Mısır Çarşısı:</strong> Eminönü'nde baharat, lokum ve kuru meyve için. Kapalıçarşı'dan Mahmutpaşa yokuşundan yürüyerek inilir.</li>
+</ul>
+<h2>Akşam: Süleymaniye</h2>
+<p>Mimar Sinan'ın eseri <strong>Süleymaniye Camii</strong>'nin avlusu, gün batımında Haliç ve Galata manzarası için şehrin en iyi noktalarından biri. Avlunun arkasındaki sokaklarda kuru fasulye yemek de geleneklerden.</p>
+<h2>Cami ziyaret kuralları</h2>
+<ul>
+<li>Ayakkabılar girişte çıkarılır; poşet genelde verilir.</li>
+<li>Omuz ve dizler kapalı olmalı. Kadınlar başlarını örter; girişlerde örtü verilen camiler var.</li>
+<li>Namaz kılanların önünden geçme, flaşlı fotoğraf çekme.</li>
+</ul>`
+},
+{
+  id:'lezzet', cat:'Lezzet', hue:45, read:5, date:'19 Ekim 2026',
+  title:'Sokak lezzetleri: İstanbul\'da ne yenir, nerede yenir?',
+  lede:'Balık ekmekten kumpire, simitten baklavaya; semt semt yeme içme rehberi.',
+  body:`
+<h2>Sabah: simit ve kahvaltı</h2>
+<p>Güne bir <strong>simit</strong> ve bardakta çayla başla; her köşedeki simitçi tablaları şehrin parçası. Uzun bir kahvaltı için <strong>Beşiktaş Çarşı</strong>'daki kahvaltıcılar sokağı ya da Boğaz kıyısındaki serpme kahvaltı mekânları tercih edilir.</p>
+<h2>Kıyı lezzetleri</h2>
+<ul>
+<li><strong>Balık ekmek:</strong> Eminönü iskelesi yanında, Galata Köprüsü'nün dibinde klasik. Yanına turşu suyu iste.</li>
+<li><strong>Midye dolma:</strong> Akşamları sokak satıcılarında. Taze olduğundan emin olmak için kalabalık tezgâhları seç.</li>
+<li><strong>Kumpir:</strong> Ortaköy'deki tezgâhlarda, istediğin malzemelerle doldurulan fırın patates. Köprü manzarası da cabası.</li>
+</ul>
+<h2>Gece atıştırmalıkları</h2>
+<ul>
+<li><strong>Kokoreç:</strong> Gece geç saatlerde açık kokoreççiler meşhur.</li>
+<li><strong>Islak hamburger:</strong> Taksim Meydanı çevresinde, gece çıkanların klasiği.</li>
+<li><strong>Tantuni ve dürüm:</strong> Kadıköy ve Beşiktaş'ta gece boyu açık yerler bulunur.</li>
+</ul>
+<h2>Tatlı</h2>
+<p><strong>Karaköy</strong> baklavacılarıyla bilinir; fıstıklı baklava ve sütlü nuriye denemeye değer. Kadıköy Çarşı'da lokum, helva ve şekerlemeciler; Üsküdar sahilinde ise çay eşliğinde dondurma yaygın.</p>
+<div class="tip"><div class="k">İpucu</div><p><strong>Kadıköy Çarşı</strong> tek başına bir yemek turu: balıkçılar, turşucular, kahveciler ve meze dükkânları birkaç sokakta toplanmış.</p></div>
+<h2>Meyhane kültürü</h2>
+<p>Akşam yemeği için meyhaneye gidiliyorsa soğuk mezelerle başlanır, ardından ara sıcaklar ve balık gelir. Beyoğlu, Kumkapı ve Kadıköy meyhaneleriyle bilinir. Hafta sonları rezervasyon yaptırmak iyi olur.</p>`
+},
+{
+  id:'mevsimler', cat:'Gezi', hue:140, read:4, date:'15 Ekim 2026',
+  title:'İstanbul\'a ne zaman gidilir? Mevsim mevsim şehir',
+  lede:'Lale zamanı, sonbahar ışığı ve kışın lodos: hangi ayda nasıl bir İstanbul bekler?',
+  body:`
+<h2>İlkbahar (Mart–Mayıs)</h2>
+<p>Şehrin en renkli dönemi. Nisan ayında düzenlenen <strong>Lale Festivali</strong> sırasında Emirgan Korusu ve parklar milyonlarca laleyle dolar. Havalar ılık ama yağmur ihtimaline karşı ince bir mont al.</p>
+<h2>Yaz (Haziran–Ağustos)</h2>
+<p>Sıcak ve nemli. Gündüz yoğun güneşte müze gezmek yorucu olabilir; gezileri sabaha ve akşamüstüne kaydır. Adalar ve Boğaz kıyısı serinlemek için en iyi kaçış noktaları.</p>
+<h2>Sonbahar (Eylül–Kasım)</h2>
+<p>Birçok İstanbullunun favori mevsimi. Deniz hâlâ ılık, turist yoğunluğu azalmış, akşamüstü ışığı Boğaz'da altın renkte. Ekim, yürüyüş ve vapur turları için en dengeli ay.</p>
+<div class="tip"><div class="k">Bilgi</div><p>15 Temmuz Şehitler Köprüsü'nün açılış yıl dönümü 30 Ekim'de. Cumhuriyet Bayramı'na denk geldiği için o hafta şehirde kutlama ışıklandırmaları olur.</p></div>
+<h2>Kış (Aralık–Şubat)</h2>
+<p>Serin, rüzgârlı ve yağışlı. Lodos estiğinde vapur seferleri iptal edilebilir. Buna karşılık müzeler sakin, oteller uygun fiyatlı. Bazı yıllar kar yağar ve kubbeli siluet beyaza bürünür.</p>`
+},
+{
+  id:'pratik', cat:'Pratik', hue:180, read:5, date:'12 Ekim 2026',
+  title:'İlk kez gelenler için pratik bilgiler',
+  lede:'Acil numaralar, para, bahşiş, pazarlık ve günlük hayatta işe yarayacak küçük bilgiler.',
+  body:`
+<h2>Acil durumlar</h2>
+<ul>
+<li><strong>112:</strong> Ambulans, polis ve itfaiye için tek acil çağrı numarası.</li>
+<li>Turizm bölgelerinde, özellikle Sultanahmet'te turizm polisi noktaları bulunur.</li>
+<li>Eczanelerin gece nöbet listesi her eczanenin kapısına asılır.</li>
+</ul>
+<h2>Para ve ödeme</h2>
+<p>Para birimi Türk lirası. Restoranlar, mağazalar ve müzelerin büyük çoğunluğunda kart geçer; küçük esnaf, simitçi ve çarşı tezgâhları için yanında biraz nakit bulundur. Döviz bozdururken havalimanı yerine şehirdeki döviz bürolarını tercih etmek genelde daha avantajlı.</p>
+<h2>Bahşiş ve pazarlık</h2>
+<ul>
+<li>Restoranlarda hesabın yaklaşık yüzde onu bahşiş olarak bırakmak yaygın, ama zorunlu değil.</li>
+<li>Kapalıçarşı ve Mısır Çarşısı'nda pazarlık olağan; fiyatı kibarca sormak ve karşılaştırmak serbest.</li>
+<li>Mağazalarda ve marketlerde etiket fiyatı geçerlidir, pazarlık yapılmaz.</li>
+</ul>
+<h2>Günlük hayat</h2>
+<ul>
+<li>Musluk suyu yerine şişe su içmek yaygın alışkanlık.</li>
+<li>Şehir çok yokuşlu; rahat ayakkabı en önemli eşyan.</li>
+<li>Günde beş kez ezan okunur; cami ziyaretlerini namaz vakitleri dışına planla.</li>
+<li>Toplu taşımada yaşlılara ve hamilelere yer vermek beklenir.</li>
+</ul>
+<div class="tip"><div class="k">İpucu</div><p>Birkaç Türkçe kelime çok kapı açar: <strong>Merhaba</strong>, <strong>Teşekkürler</strong>, <strong>Ne kadar?</strong>, <strong>Hesap lütfen</strong>.</p></div>
+<h2>İnternet</h2>
+<p>Havalimanlarında turistik SIM kart ve eSIM satılır. Pek çok kafede ve bazı meydanlarda ücretsiz Wi‑Fi bulunur.</p>`
+}
+];
+
+/* ---------- KAPAK ÇİZİMİ (her kategoriye özel küçük sahne) ---------- */
+function drawCover(cv, p){
+  const r = cv.getBoundingClientRect();
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const W = Math.max(200, r.width), H = Math.max(80, r.height);
+  cv.width = W * dpr; cv.height = H * dpr;
+  const c = cv.getContext('2d'); c.scale(dpr, dpr);
+  const g = c.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, `hsl(${p.hue} 40% 10%)`); g.addColorStop(1, `hsl(${p.hue} 55% 22%)`);
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  let seed = p.id.length * 7.13;
+  const rand = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  for (let i = 0; i < 60; i++){ c.fillStyle = `rgba(255,240,245,${rand() * .5})`; c.fillRect(rand() * W, rand() * H * .5, 1, 1); }
+  const hz = H * .72;
+  // su
+  c.fillStyle = `hsl(${p.hue} 50% 8%)`; c.fillRect(0, hz, W, H - hz);
+  // siluet
+  c.fillStyle = '#09060b';
+  c.beginPath(); c.moveTo(0, hz);
+  for (let x = 0; x <= W; x += 8) c.lineTo(x, hz - 6 - Math.abs(Math.sin(x * .02 + seed)) * H * .06);
+  c.lineTo(W, hz); c.fill();
+  const acc = `hsl(${p.hue} 90% 65%)`;
+  c.strokeStyle = acc; c.fillStyle = acc; c.lineWidth = 1.4;
+  if (p.cat === 'Ulaşım'){
+    // vapur
+    const x = W * .55, y = hz - 2;
+    c.fillStyle = '#f1e6ea'; c.fillRect(x - 40, y - 10, 80, 10);
+    c.fillRect(x - 24, y - 20, 48, 10);
+    c.fillStyle = acc; c.fillRect(x - 3, y - 32, 6, 12);
+    for (let i = 0; i < 6; i++){ c.fillStyle = '#ffd88a'; c.fillRect(x - 20 + i * 8, y - 16, 3, 3); }
+    c.strokeStyle = 'rgba(255,255,255,.3)';
+    for (let i = 0; i < 4; i++){ c.beginPath(); c.moveTo(x + 40 + i * 14, y + 3 + i * 3); c.lineTo(x + 60 + i * 22, y + 3 + i * 3); c.stroke(); }
+  } else if (p.cat === 'Lezzet'){
+    // simit halkası
+    const x = W * .7, y = H * .38, R = H * .2;
+    c.lineWidth = R * .45; c.strokeStyle = `hsl(${p.hue} 70% 45%)`;
+    c.beginPath(); c.arc(x, y, R, 0, 7); c.stroke();
+    c.fillStyle = '#f6efe2';
+    for (let i = 0; i < 40; i++){ const a = rand() * 7, rr = R + (rand() - .5) * R * .35; c.fillRect(x + Math.cos(a) * rr, y + Math.sin(a) * rr, 2, 1.2); }
+  } else if (p.cat === 'Pratik'){
+    // pusula
+    const x = W * .72, y = H * .4, R = H * .2;
+    c.lineWidth = 1.5; c.beginPath(); c.arc(x, y, R, 0, 7); c.stroke();
+    for (let i = 0; i < 16; i++){ const a = i * Math.PI / 8, l = i % 4 ? .88 : .75; c.beginPath(); c.moveTo(x + Math.cos(a) * R * l, y + Math.sin(a) * R * l); c.lineTo(x + Math.cos(a) * R, y + Math.sin(a) * R); c.stroke(); }
+    c.beginPath(); c.moveTo(x, y - R * .7); c.lineTo(x + 5, y); c.lineTo(x, y + R * .7); c.lineTo(x - 5, y); c.closePath(); c.fill();
+  } else {
+    // cami / köprü
+    if (p.id === 'bogaz-turu'){
+      const a = W * .1, b = W * .9, top = hz - H * .35, deck = hz - H * .1;
+      for (let i = 0; i <= 30; i++){ const x = a + (b - a) * i / 30, u = i / 30, cy = deck + (top - deck) * (2 * u - 1) ** 2; c.globalAlpha = .8; c.beginPath(); c.moveTo(x, cy); c.lineTo(x + (b - a) / 30 * (i % 2 ? -1 : 1), deck); c.stroke(); }
+      c.globalAlpha = 1; c.fillStyle = '#ff7a3d'; c.fillRect(a - 2, top, 4, hz - top); c.fillRect(b - 2, top, 4, hz - top); c.fillRect(0, deck, W, 2);
+    } else {
+      const x = W * .5, s = H * .12; c.fillStyle = '#09060b';
+      c.beginPath(); c.arc(x, hz - 6, s, Math.PI, 0); c.fill();
+      c.beginPath(); c.arc(x, hz - 6 - s * .6, s * .6, Math.PI, 0); c.fill();
+      for (const dx of [-2.2, 2.2, -3.4, 3.4]){ const h = Math.abs(dx) > 3 ? 2.6 : 3.2; c.fillRect(x + dx * s - 1.5, hz - 6 - s * h, 3, s * h); c.beginPath(); c.moveTo(x + dx * s - 2.5, hz - 6 - s * h); c.lineTo(x + dx * s, hz - 6 - s * (h + .7)); c.lineTo(x + dx * s + 2.5, hz - 6 - s * h); c.fill(); }
+      const gl = c.createRadialGradient(x, hz - s, 0, x, hz - s, s * 5); gl.addColorStop(0, `hsla(${p.hue},90%,65%,.35)`); gl.addColorStop(1, 'transparent');
+      c.fillStyle = gl; c.fillRect(0, 0, W, hz);
+    }
+  }
+  // yansıma şeritleri
+  for (let i = 0; i < 26; i++){ c.fillStyle = `hsla(${p.hue},90%,70%,${.08 + rand() * .2})`; c.fillRect(rand() * W, hz + 4 + rand() * (H - hz - 6), 8 + rand() * 30, 1); }
+}
+
+function card(p){
+  return `<a class="post" href="#yazi-${p.id}" data-cat="${p.cat}">
+    <div class="cover"><canvas data-cover="${p.id}" aria-hidden="true"></canvas><span class="tag">${p.cat}</span></div>
+    <h3>${p.title}</h3><p>${p.lede}</p>
+    <div class="meta"><span>${p.date}</span><span>${p.read} dk okuma</span></div></a>`;
+}
+function paintCovers(root){
+  root.querySelectorAll('canvas[data-cover]').forEach(cv => drawCover(cv, POSTS.find(p => p.id === cv.dataset.cover)));
+}
+
+document.getElementById('home-posts').innerHTML = POSTS.slice(0, 3).map(card).join('');
+document.getElementById('blog-posts').innerHTML = POSTS.map(card).join('');
+
+document.querySelectorAll('[data-filter]').forEach(b => b.addEventListener('click', () => {
+  const f = b.dataset.filter;
+  document.querySelectorAll('[data-filter]').forEach(x => x.setAttribute('aria-pressed', x === b));
+  document.querySelectorAll('#blog-posts .post').forEach(el => el.hidden = !!f && el.dataset.cat !== f);
+}));
+
+function renderArticle(p){
+  const i = POSTS.indexOf(p), prev = POSTS[i - 1], next = POSTS[i + 1];
+  const el = document.getElementById('article');
+  el.innerHTML = `
+    <div class="crumb"><a href="#blog">Rehber</a><span>/</span><span>${p.cat}</span></div>
+    <h1>${p.title}</h1>
+    <p class="a-lede">${p.lede}</p>
+    <div class="meta"><span>${p.date}</span><span>${p.read} dk okuma</span></div>
+    <div class="cover"><canvas data-cover="${p.id}" aria-hidden="true"></canvas><span class="tag">${p.cat}</span></div>
+    <div class="a-grid">
+      <div class="a-body">${p.body}</div>
+      <aside class="toc"><div class="k">Bu yazıda</div><ol></ol></aside>
+    </div>
+    <nav class="pn" aria-label="Diğer yazılar">
+      ${prev ? `<a href="#yazi-${prev.id}"><small>← Önceki</small><span>${prev.title}</span></a>` : '<span></span>'}
+      ${next ? `<a href="#yazi-${next.id}"><small>Sonraki →</small><span>${next.title}</span></a>` : '<span></span>'}
+    </nav>`;
+  const ol = el.querySelector('.toc ol');
+  el.querySelectorAll('.a-body h2').forEach((h, n) => {
+    const li = document.createElement('li'), b = document.createElement('button');
+    b.type = 'button'; b.id = 'toc-' + n; b.textContent = h.textContent;
+    b.addEventListener('click', () => h.scrollIntoView({behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start'}));
+    h.style.scrollMarginTop = '84px';
+    li.appendChild(b); ol.appendChild(li);
+  });
+  paintCovers(el);
+}
+
+/* ---------- YÖNLENDİRME ---------- */
+let sceneActive = false;
+function route(){
+  const h = location.hash.slice(1);
+  const post = h.startsWith('yazi-') && POSTS.find(p => 'yazi-' + p.id === h);
+  const view = post ? 'yazi' : h === 'blog' ? 'blog' : 'ana';
+  ['ana', 'blog', 'yazi'].forEach(v => document.getElementById('v-' + v).hidden = v !== view);
+  document.querySelectorAll('[data-nav]').forEach(a => {
+    const on = (a.dataset.nav === view && view !== 'yazi') || (post && (a.dataset.nav === (post.id === 'pratik' ? 'pratik' : 'blog')));
+    on ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current');
+  });
+  if (post) renderArticle(post);
+  if (view === 'blog') paintCovers(document.getElementById('v-blog'));
+  if (view === 'ana') paintCovers(document.getElementById('home-posts'));
+  sceneActive = view === 'ana';
+  if (sceneActive) window.__scene && window.__scene.start();
+  document.title = post ? post.title + ' · İstanbul' : view === 'blog' ? 'Rehber · İstanbul' : 'İstanbul Boğaz Gecesi';
+  window.scrollTo(0, 0);
+}
+addEventListener('hashchange', route);
+
+/* ---------- CANLI SAHNE ---------- */
+(() => {
+  const cv = document.getElementById('scene');
+  const ctx = cv.getContext('2d');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let W, H, dpr, horizon, stars = [], cityL = [], hillsL = [], hillsR = [], cars = [];
+  let theme = 'rose', running = false;
+  const themes = {
+    rose: () => [330, 95, 70],
+    red: () => [2, 95, 60],
+    teal: () => [174, 80, 60],
+    rainbow: (i, t) => [((i * 9 + t * 40) % 360), 90, 62]
+  };
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  function hill(x0, x1, base, peak, seed){
+    const pts = [];
+    for (let x = x0; x <= x1; x += 6){
+      const u = (x - x0) / (x1 - x0);
+      const env = Math.sin(Math.PI * Math.min(1, u * 1.2));
+      const n = Math.sin(x * .013 + seed) * .35 + Math.sin(x * .041 + seed * 2) * .15;
+      pts.push([x, base - peak * Math.max(0, env * (.75 + n))]);
+    }
+    return pts;
+  }
+  const yOn = (pts, x) => { for (let i = 1; i < pts.length; i++) if (pts[i][0] >= x) return pts[i][1]; return null; };
+  function setup(){
+    dpr = Math.min(devicePixelRatio || 1, 2);
+    W = cv.clientWidth; H = cv.clientHeight;
+    if (!W || !H) return false;
+    cv.width = W * dpr; cv.height = H * dpr;
+    horizon = Math.round(H * .6);
+    stars = Array.from({length: Math.round(W * H / 6000)}, () => ({x: rnd(0, W), y: rnd(0, horizon * .8), r: rnd(.3, 1.2), p: rnd(0, 6)}));
+    hillsL = hill(-40, W * .42, horizon, H * .07, 1.3);
+    hillsR = hill(W * .55, W + 40, horizon, H * .035, 4.1);
+    cityL = [];
+    for (let i = 0; i < W * .9; i++){
+      const left = Math.random() < .45;
+      const x = left ? rnd(0, W * .4) : rnd(W * .38, W);
+      const top = left ? yOn(hillsL, x) : (yOn(hillsR, x) ?? horizon);
+      const warm = Math.random();
+      cityL.push({x, y: rnd(top ?? horizon, horizon - 1), c: warm < .7 ? '255,190,120' : warm < .9 ? '255,240,220' : '150,200,255', p: rnd(0, 6), s: rnd(.5, 1.4)});
+    }
+    cars = Array.from({length: 18}, (_, i) => ({u: Math.random(), dir: i % 2 ? 1 : -1, v: rnd(.02, .045)}));
+    return true;
+  }
+  const geom = () => ({tA: W * .06, tB: W * .94, deck: horizon - H * .075, top: horizon - H * .34});
+  function cableY(x, g){ const s = 2 * (x - g.tA) / (g.tB - g.tA) - 1; return g.deck - 3 + (g.top - g.deck + 3) * s * s; }
+  function drawSky(t){
+    const sky = ctx.createLinearGradient(0, 0, 0, horizon);
+    sky.addColorStop(0, '#0b0810'); sky.addColorStop(.7, '#1d1220'); sky.addColorStop(1, '#3a2224');
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, horizon);
+    for (const s of stars){ ctx.fillStyle = `rgba(255,240,245,${.35 + .35 * Math.sin(t * 1.3 + s.p)})`; ctx.fillRect(s.x, s.y, s.r, s.r); }
+    const glow = ctx.createRadialGradient(W * .55, horizon, 0, W * .55, horizon, W * .6);
+    glow.addColorStop(0, 'rgba(255,140,80,.18)'); glow.addColorStop(1, 'rgba(255,140,80,0)');
+    ctx.fillStyle = glow; ctx.fillRect(0, 0, W, horizon);
+  }
+  function drawLand(t){
+    ctx.fillStyle = '#0a070b';
+    for (const pts of [hillsL, hillsR]){
+      ctx.beginPath(); ctx.moveTo(pts[0][0], horizon);
+      for (const p of pts) ctx.lineTo(p[0], p[1]);
+      ctx.lineTo(pts[pts.length - 1][0], horizon); ctx.closePath(); ctx.fill();
+    }
+    ctx.fillRect(0, horizon - 3, W, 3);
+    for (const [fx, sc] of [[.58, 1], [.66, .8], [.79, 1.1]]){
+      const x = W * fx, s = Math.max(6, H * .018) * sc;
+      ctx.beginPath(); ctx.arc(x, horizon - 3, s, Math.PI, 0); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, horizon - 3 - s * .6, s * .55, Math.PI, 0); ctx.fill();
+      for (const dx of [-1.9, 1.9]){
+        ctx.fillRect(x + dx * s - 1, horizon - 3 - s * 3.2, 2, s * 3.2);
+        ctx.beginPath(); ctx.moveTo(x + dx * s - 1.5, horizon - 3 - s * 3.2); ctx.lineTo(x + dx * s, horizon - 3 - s * 3.9); ctx.lineTo(x + dx * s + 1.5, horizon - 3 - s * 3.2); ctx.fill();
+      }
+      const g = ctx.createRadialGradient(x, horizon - s, 0, x, horizon - s, s * 4);
+      g.addColorStop(0, 'rgba(255,200,120,.22)'); g.addColorStop(1, 'rgba(255,200,120,0)');
+      ctx.fillStyle = g; ctx.fillRect(x - s * 4, horizon - s * 5, s * 8, s * 5);
+      ctx.fillStyle = '#0a070b';
+    }
+    for (const c of cityL){ ctx.fillStyle = `rgba(${c.c},${.55 + .4 * Math.sin(t * c.s + c.p)})`; ctx.fillRect(c.x, c.y, 1.4, 1.4); }
+  }
+  function drawBridge(t){
+    const g = geom(), fn = themes[theme];
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const n = Math.max(24, Math.round((g.tB - g.tA) / 14)), step = (g.tB - g.tA) / n;
+    for (let i = 0; i < n; i++){
+      const x1 = g.tA + i * step, x2 = x1 + step, up = i % 2 === 0;
+      const ax = up ? x1 : x2, bx = up ? x2 : x1, ay = cableY(ax, g);
+      const wave = .55 + .45 * Math.sin(t * 2.2 - i * .28);
+      const [h, s, l] = fn(i, t);
+      ctx.strokeStyle = `hsla(${h},${s}%,${l}%,${.14 * wave})`; ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, g.deck); ctx.stroke();
+      ctx.strokeStyle = `hsla(${h},${s}%,${Math.min(92, l + 18)}%,${.55 + .45 * wave})`; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, g.deck); ctx.stroke();
+      ctx.fillStyle = `hsla(${h},90%,85%,${.6 + .4 * wave})`; ctx.fillRect(x1 - 1, g.deck - 1, 2.2, 2.2);
+    }
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(255,120,60,.9)'; ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    for (let x = g.tA; x <= g.tB; x += 4) x === g.tA ? ctx.moveTo(x, cableY(x, g)) : ctx.lineTo(x, cableY(x, g));
+    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(g.tA, g.top); ctx.quadraticCurveTo(g.tA - W * .03, g.deck - 10, -10, g.deck + 6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(g.tB, g.top); ctx.quadraticCurveTo(g.tB + W * .03, g.deck - 10, W + 10, g.deck + 6); ctx.stroke();
+    ctx.fillStyle = '#ff6a3a'; ctx.fillRect(-10, g.deck, W + 20, 2.5);
+    ctx.fillStyle = 'rgba(255,106,58,.25)'; ctx.fillRect(-10, g.deck - 2, W + 20, 6);
+    for (const x of [g.tA, g.tB]){
+      const tw = Math.max(5, W * .007);
+      const grad = ctx.createLinearGradient(x - tw, 0, x + tw, 0);
+      grad.addColorStop(0, '#c74a1f'); grad.addColorStop(.5, '#ff8a3d'); grad.addColorStop(1, '#a8391a');
+      ctx.fillStyle = grad; ctx.fillRect(x - tw / 2, g.top, tw, horizon - g.top);
+      ctx.fillStyle = 'rgba(255,140,60,.12)'; ctx.fillRect(x - tw * 2, g.top, tw * 4, horizon - g.top);
+      ctx.fillStyle = `rgba(255,40,40,${.5 + .5 * Math.sin(t * 3)})`;
+      ctx.beginPath(); ctx.arc(x, g.top - 4, 2.5, 0, 7); ctx.fill();
+    }
+    for (const c of cars){
+      if (!reduce) c.u = (c.u + c.v * .016 * c.dir + 1) % 1;
+      ctx.fillStyle = c.dir > 0 ? 'rgba(255,250,230,.95)' : 'rgba(255,60,50,.95)';
+      ctx.fillRect(c.u * W, g.deck - (c.dir > 0 ? 3 : 1.5), 3, 1.2);
+    }
+  }
+  function drawWater(t){
+    ctx.fillStyle = '#0a0710'; ctx.fillRect(0, horizon, W, H - horizon);
+    const rowH = 2;
+    for (let y = horizon; y < H; y += rowH){
+      const d = y - horizon, srcY = horizon - d * .95 - rowH;
+      if (srcY < 0) break;
+      const amp = 1.5 + d * .06;
+      const off = Math.sin(d * .09 - t * 1.6) * amp + Math.sin(d * .23 + t * 2.3) * amp * .4;
+      ctx.globalAlpha = Math.max(0, .75 - d / (H - horizon) * .55);
+      ctx.drawImage(cv, 0, srcY * dpr, W * dpr, rowH * dpr, off, y, W, rowH + .5);
+    }
+    ctx.globalAlpha = 1;
+    const shade = ctx.createLinearGradient(0, horizon, 0, H);
+    shade.addColorStop(0, 'rgba(13,10,18,.15)'); shade.addColorStop(1, 'rgba(13,10,18,.7)');
+    ctx.fillStyle = shade; ctx.fillRect(0, horizon, W, H - horizon);
+    for (let i = 0; i < 40; i++){
+      ctx.fillStyle = `rgba(255,170,210,${.15 + .15 * Math.sin(t * 3 + i)})`;
+      ctx.fillRect((i * 97.3 + t * 12) % W, horizon + 6 + ((i * 53.1) % (H - horizon - 8)), 6 + (i % 4) * 3, 1);
+    }
+  }
+  function frame(ms){
+    if (!sceneActive){ running = false; return; }
+    const t = ms / 1000;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawSky(t); drawLand(t); drawBridge(t); drawWater(t);
+    if (!reduce) requestAnimationFrame(frame); else running = false;
+  }
+  function start(){
+    if (running) return;
+    if (cv.clientWidth !== W || cv.clientHeight !== H || !stars.length) if (!setup()) return;
+    running = true; requestAnimationFrame(frame);
+  }
+  window.__scene = {start};
+  let rT; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => {
+    if (sceneActive){ setup(); if (reduce) start(); }
+    document.querySelectorAll('canvas[data-cover]').forEach(cv => { if (cv.offsetParent) drawCover(cv, POSTS.find(p => p.id === cv.dataset.cover)); });
+  }, 150); });
+  document.querySelectorAll('[data-theme-key]').forEach(b => b.addEventListener('click', () => {
+    theme = b.dataset.themeKey;
+    document.querySelectorAll('[data-theme-key]').forEach(x => x.setAttribute('aria-pressed', x === b));
+    if (reduce) start();
+  }));
+})();
+
+/* ---------- YIL DÖNÜMÜ SAYACI ---------- */
+(() => {
+  const countEl = document.getElementById('count'), noEl = document.getElementById('anniv-no');
+  function tick(){
+    const now = new Date();
+    let y = now.getFullYear(), target = new Date(y, 9, 30);
+    if (now - target >= 864e5){ y++; target = new Date(y, 9, 30); }
+    noEl.textContent = (y - 1973) + '.';
+    const diff = target - now;
+    if (diff <= 0){ countEl.textContent = 'Bugün köprünün doğum günü'; return; }
+    const d = Math.floor(diff / 864e5), h = Math.floor(diff / 36e5) % 24, m = Math.floor(diff / 6e4) % 60, s = Math.floor(diff / 1e3) % 60;
+    countEl.textContent = `${d} gün ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')} kaldı`;
+  }
+  tick(); setInterval(tick, 1000);
+})();
+
+route();
+</script>
+
+</body></html>

@@ -5,7 +5,7 @@ import { extractTokens } from '../../core/html/extractTokens'
 import { extractDemoContent } from '../../core/html/demoContent'
 import { safeSourceName, scanSiteFolder, type FolderScan } from '../../core/html/siteFolder'
 import { splitSections } from '../../core/html/splitSections'
-import { normalizePlan } from '../../core/pipeline/layout'
+import { coerceControls, normalizePlan } from '../../core/pipeline/layout'
 import { ProjectStore } from '../../core/project/store'
 import { clampConcurrency } from '../../core/pool'
 import { DEFAULT_LLM_SETTINGS, PREFIX_RE, type IntakeInput, type IntakeSource, type LLMSettings, type Plan, type PreAnalysis, type ProjectState } from '../../core/types'
@@ -120,7 +120,7 @@ export function registerFsIpc(getWindow: () => BrowserWindow | null): void {
       s.readJson<ProjectState>(id, 'state.json')
     ])
     if (!intake || !pre || !state) throw new Error(`Proje bulunamadı veya eksik: ${id}`)
-    return { id, intake, pre, plan, state }
+    return { id, intake, pre, plan: coerceControls(plan), state }
   })
 
   ipcMain.handle('projects:savePlan', async (_e, id: string, plan: Plan, approve: boolean) => {

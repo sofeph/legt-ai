@@ -295,3 +295,11 @@ describe('widget CSS (cssMode: source)', () => {
     expect(scopeSelector('> .x', '.w')).toBeNull()
   })
 })
+
+describe('kontrol adları', () => {
+  it('nesne olarak gelen kontrolleri ad dizgesine çevirir', async () => {
+    const { controlNames } = await import('@core/pipeline/layout')
+    expect(controlNames([{ id: 'title', type: 'text' }, 'subtitle', { name: 'image', label: 'Görsel' }, { label: 'Düğme' }, { id: 'title' }, null, ''])).toEqual(['title', 'subtitle', 'image', 'Düğme'])
+    expect(controlNames(undefined)).toEqual([])
+  })
+})

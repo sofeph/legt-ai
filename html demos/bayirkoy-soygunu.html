@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bayırköy RP — FiveM Roleplay Sunucusu</title>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:ital,wght@0,500;0,700;1,800&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --g:#2bd96b; --g2:#18a34d; --g3:#0d5c2c; --money:#9cff57;
+  --bg:#070b08; --panel:#0f1712; --txt:#e8f5ec; --mut:#8aa596;
+  --skew:-8deg;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--txt);font-family:Inter,sans-serif;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+h1,h2,h3{font-family:Anton,sans-serif;letter-spacing:1px;text-transform:uppercase}
+
+/* ===== LOADER ===== */
+#loader{position:fixed;inset:0;z-index:999;background:#000;display:flex;flex-direction:column;justify-content:flex-end;padding:40px;transition:opacity .8s}
+#loader .bgart{position:absolute;inset:0;background:
+  radial-gradient(circle at 70% 40%,rgba(43,217,107,.35),transparent 50%),
+  repeating-linear-gradient(115deg,#0a120c 0 40px,#0c1710 40px 80px);animation:pan 20s linear infinite}
+@keyframes pan{to{background-position:0 0,800px 0}}
+#loader .ltitle{position:relative;font-family:Anton;font-size:clamp(48px,10vw,120px);color:var(--g);text-shadow:4px 4px 0 #000;transform:skew(var(--skew))}
+#loader .tip{position:relative;font-family:'Barlow Condensed';font-size:20px;color:var(--mut);margin:10px 0 20px;min-height:24px}
+#loader .bar{position:relative;height:6px;background:#1a261e;max-width:500px}
+#loader .bar i{display:block;height:100%;width:0;background:var(--g);box-shadow:0 0 15px var(--g)}
+#loader .spin{position:absolute;right:40px;bottom:40px;width:34px;height:34px;border:4px solid #1a261e;border-top-color:var(--g);border-radius:50%;animation:rot 1s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+/* ===== NAV ===== */
+nav{position:fixed;top:0;left:0;right:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:18px 5vw;transition:.3s}
+nav.solid{background:rgba(7,11,8,.92);backdrop-filter:blur(8px);border-bottom:2px solid var(--g3)}
+.logo{font-family:Anton;font-size:30px;transform:skew(var(--skew));display:flex;gap:2px}
+.logo span{background:var(--g);color:#000;padding:0 8px}
+.logo b{font-weight:400;padding:0 6px;border:2px solid var(--g);color:var(--g)}
+nav ul{display:flex;gap:28px;list-style:none;font-family:'Barlow Condensed';font-weight:700;font-size:19px;text-transform:uppercase}
+nav ul a{position:relative;padding:4px 0}
+nav ul a::after{content:"";position:absolute;left:0;bottom:-2px;height:3px;width:0;background:var(--g);transition:.3s}
+nav ul a:hover::after{width:100%}
+.burger{display:none;background:none;border:0;color:var(--g);font-size:30px;cursor:pointer}
+
+/* ===== HUD ===== */
+.hud{position:fixed;top:80px;right:4vw;z-index:40;text-align:right;font-family:'Barlow Condensed';pointer-events:none}
+.stars{font-size:26px;letter-spacing:4px;color:#2a3a30;text-shadow:2px 2px 0 #000}
+.stars i{font-style:normal;transition:.3s}
+.stars i.on{color:#fff;animation:blink .6s infinite alternate}
+@keyframes blink{to{color:var(--g);text-shadow:0 0 12px var(--g)}}
+.cash{font-size:34px;font-weight:800;font-style:italic;color:var(--money);text-shadow:2px 2px 0 #000,0 0 10px rgba(156,255,87,.4)}
+.cash.pop{animation:cpop .4s}
+@keyframes cpop{50%{transform:scale(1.15)}}
+
+.radar{position:fixed;left:3vw;bottom:3vw;z-index:40;width:170px;height:170px;border-radius:50%;overflow:hidden;border:4px solid #000;outline:2px solid var(--g3);
+  background:radial-gradient(circle,#123a20 0%,#08180e 70%);box-shadow:0 0 25px rgba(0,0,0,.8)}
+.radar::before{content:"";position:absolute;inset:0;background:
+  linear-gradient(transparent 49%,rgba(43,217,107,.25) 50%,transparent 51%),
+  linear-gradient(90deg,transparent 49%,rgba(43,217,107,.25) 50%,transparent 51%),
+  repeating-radial-gradient(circle,transparent 0 28px,rgba(43,217,107,.15) 29px 30px)}
+.sweep{position:absolute;inset:0;background:conic-gradient(from 0deg,rgba(43,217,107,.55),transparent 25%);animation:rot 3s linear infinite}
+.blip{position:absolute;width:8px;height:8px;border-radius:50%;background:var(--money);box-shadow:0 0 8px var(--money);animation:bl 1.5s infinite}
+@keyframes bl{50%{opacity:.2}}
+.me{position:absolute;left:50%;top:50%;transform:translate(-50%,-60%);width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:14px solid #fff}
+
+/* ===== HERO ===== */
+.hero{position:relative;height:100vh;min-height:620px;overflow:hidden;display:flex;align-items:center;padding:0 5vw}
+.sky{position:absolute;inset:0;background:linear-gradient(180deg,#04140a 0%,#0b3a1c 55%,#2bd96b 100%)}
+.sun{position:absolute;left:60%;bottom:22%;width:340px;height:340px;border-radius:50%;
+  background:repeating-linear-gradient(0deg,#9cff57 0 14px,transparent 14px 22px);
+  -webkit-mask:linear-gradient(#000 40%,transparent);mask:linear-gradient(#000 40%,transparent);opacity:.65;filter:blur(.5px)}
+.city{position:absolute;left:0;right:0;bottom:0;height:60%;will-change:transform}
+.city svg{width:100%;height:100%}
+.hero canvas{position:absolute;inset:0;pointer-events:none}
+.hero::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 2px,transparent 2px 4px);pointer-events:none}
+.hero-txt{position:relative;z-index:3;max-width:720px}
+.tag{display:inline-block;font-family:'Barlow Condensed';font-weight:700;font-size:18px;background:#000;color:var(--g);padding:4px 14px;transform:skew(var(--skew));margin-bottom:18px}
+.hero h1{font-size:clamp(48px,10vw,140px);line-height:.85;transform:skew(var(--skew));text-shadow:6px 6px 0 #000}
+.hero h1 .g{color:var(--g);display:block;-webkit-text-stroke:2px #000}
+.hero h1 .ch{display:inline-block;opacity:0;transform:translateY(60px) rotate(8deg);animation:chIn .6s forwards}
+@keyframes chIn{to{opacity:1;transform:none}}
+.hero p{font-size:19px;color:#cfe9d7;margin:22px 0 32px;max-width:520px;text-shadow:1px 1px 0 #000}
+.btns{display:flex;gap:16px;flex-wrap:wrap}
+.btn{font-family:'Barlow Condensed';font-weight:800;font-style:italic;font-size:24px;text-transform:uppercase;padding:14px 34px;border:0;cursor:pointer;transform:skew(var(--skew));position:relative;overflow:hidden;transition:.25s}
+.btn.pri{background:var(--g);color:#000;box-shadow:6px 6px 0 #000}
+.btn.pri:hover{transform:skew(var(--skew)) translate(-3px,-3px);box-shadow:9px 9px 0 #000}
+.btn.pri::before{content:"";position:absolute;top:0;left:-80%;width:50%;height:100%;background:rgba(255,255,255,.5);transform:skew(-20deg);animation:shine 2.8s infinite}
+@keyframes shine{60%,100%{left:130%}}
+.btn.sec{background:rgba(0,0,0,.6);color:var(--g);border:2px solid var(--g)}
+.btn.sec:hover{background:var(--g);color:#000}
+
+/* ===== SECTIONS ===== */
+section{padding:110px 5vw;position:relative}
+.sh{margin-bottom:50px}
+.sh small{font-family:'Barlow Condensed';font-weight:700;color:var(--g);font-size:18px;letter-spacing:3px}
+.sh h2{font-size:clamp(42px,6vw,76px);transform:skew(var(--skew));transform-origin:left}
+.sh h2 em{font-style:normal;color:var(--g)}
+
+.reveal{opacity:0;transform:translateY(50px);transition:.8s cubic-bezier(.2,.8,.2,1)}
+.reveal.in{opacity:1;transform:none}
+
+/* characters */
+.chars{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.card{position:relative;height:460px;overflow:hidden;transform:skew(var(--skew));border:3px solid #000;cursor:pointer;background:var(--panel)}
+.card .art{position:absolute;inset:-20px;transform:skew(8deg);transition:.5s;display:flex;align-items:flex-end;justify-content:center}
+.card:nth-child(1) .art{background:linear-gradient(160deg,#1c5c35,#05140b)}
+.card:nth-child(2) .art{background:linear-gradient(160deg,#2a6b2a,#0b1a07)}
+.card:nth-child(3) .art{background:linear-gradient(160deg,#0f5150,#041414)}
+.card svg{width:78%;transition:.5s;filter:drop-shadow(10px 10px 0 rgba(0,0,0,.5))}
+.card:hover .art{transform:skew(8deg) scale(1.08)}
+.card:hover svg{transform:translateY(-12px)}
+.card .info{position:absolute;left:0;right:0;bottom:0;padding:22px;background:linear-gradient(transparent,#000 70%);transform:skew(8deg)}
+.card h3{font-size:34px;color:var(--g)}
+.scales{transform-box:view-box;transform-origin:1060px 170px;animation:tilt 3s ease-in-out infinite}
+@keyframes tilt{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}}
+.card p{font-size:14px;color:var(--mut);max-height:0;overflow:hidden;transition:.4s}
+.card:hover p{max-height:80px;margin-top:6px}
+.card .num{position:absolute;top:10px;right:18px;font-family:Anton;font-size:90px;color:rgba(255,255,255,.07);transform:skew(8deg)}
+
+/* features */
+.feat{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+.f{background:var(--panel);border-left:5px solid var(--g);padding:28px 24px;transition:.3s;position:relative;overflow:hidden}
+.f::before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 40%,rgba(43,217,107,.12));transform:translateX(-100%);transition:.5s}
+.f:hover::before{transform:none}
+.f:hover{transform:translateY(-8px);box-shadow:0 14px 30px rgba(0,0,0,.6)}
+.f .ic{font-size:38px;margin-bottom:14px}
+.f h3{font-size:26px;margin-bottom:8px}
+.f p{color:var(--mut);font-size:15px;line-height:1.5}
+
+/* stats */
+.stats{background:var(--g);color:#000;display:grid;grid-template-columns:repeat(4,1fr);gap:20px;padding:60px 5vw;clip-path:polygon(0 12%,100% 0,100% 88%,0 100%)}
+.stat{text-align:center}
+.stat b{font-family:Anton;font-size:clamp(42px,6vw,72px);display:block}
+.stat span{font-family:'Barlow Condensed';font-weight:700;font-size:20px;text-transform:uppercase}
+
+/* gallery */
+.gal{display:grid;grid-template-columns:2fr 1fr 1fr;grid-template-rows:220px 220px;gap:14px}
+.gal div{position:relative;overflow:hidden;border:3px solid #000}
+.gal div:first-child{grid-row:span 2}
+.gal div i{position:absolute;inset:0;transition:.6s}
+.gal div:hover i{transform:scale(1.12) rotate(1deg)}
+.gal span{position:absolute;left:12px;bottom:12px;background:#000;color:var(--g);font-family:'Barlow Condensed';font-weight:700;padding:3px 10px;transform:skew(var(--skew))}
+
+/* cta */
+.cta{text-align:center;background:radial-gradient(circle at 50% 50%,#103d20,var(--bg) 70%)}
+.cta h2{font-size:clamp(46px,8vw,110px);transform:skew(var(--skew));text-shadow:5px 5px 0 #000}
+.cta h2 em{color:var(--g);font-style:normal}
+.cta .btn{margin-top:30px}
+.plat{margin-top:30px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;font-family:'Barlow Condensed';font-weight:700}
+.plat span{border:1px solid var(--g3);padding:6px 16px;color:var(--mut)}
+
+footer{padding:40px 5vw 120px;border-top:2px solid var(--g3);display:flex;justify-content:space-between;color:var(--mut);font-size:14px;flex-wrap:wrap;gap:10px}
+
+/* mission overlay */
+#mission{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(0,0,0,.55)}
+#mission.show{display:flex}
+#mission h2{font-size:clamp(50px,9vw,120px);color:var(--g);text-shadow:5px 5px 0 #000;animation:mIn .5s cubic-bezier(.2,1.6,.4,1)}
+#mission p{font-family:'Barlow Condensed';font-size:30px;font-weight:800;font-style:italic;color:#fff;margin-top:6px;animation:mIn .5s .2s both}
+@keyframes mIn{from{transform:scale(2.5);opacity:0}}
+
+
+/* ===== VIEWS / PAGES ===== */
+.view{display:none}
+body.inner .radar{display:none}.view.active{display:block}
+.page{padding:140px 5vw 90px;min-height:100vh;max-width:1300px;margin:0 auto}
+.lead{color:var(--mut);font-size:18px;max-width:700px;margin-top:16px;line-height:1.6}
+.sub{font-size:30px;margin:60px 0 22px;display:flex;align-items:center;gap:14px}
+.sub::before{content:"";width:28px;height:6px;background:var(--g);transform:skew(var(--skew))}
+nav ul a.act{color:var(--g)}nav ul a.act::after{width:100%}
+.navcta{background:var(--g);color:#000!important;padding:4px 14px!important;transform:skew(var(--skew));display:inline-block}
+.navcta::after{display:none}
+
+.srv{margin-top:26px;display:inline-flex;gap:10px;align-items:center;background:rgba(0,0,0,.65);border:1px solid var(--g3);padding:8px 16px;font-family:'Barlow Condensed';font-weight:700;font-size:18px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--g);box-shadow:0 0 10px var(--g);animation:bl 1.2s infinite}
+.dot.off{background:#ff4d4d;box-shadow:0 0 10px #ff4d4d}
+
+.must{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.must .f h3{font-size:22px}
+.tbl{overflow-x:auto;border:2px solid var(--g3)}
+.spec{width:100%;border-collapse:collapse;font-size:15px;min-width:760px}
+.spec th,.spec td{padding:14px 16px;border-bottom:1px solid #1d2b22;text-align:left;vertical-align:top}
+.spec thead th{font-family:'Barlow Condensed';font-size:19px;text-transform:uppercase;color:#000;background:var(--g)}
+.spec thead th:last-child{background:var(--money)}
+.spec td:first-child{color:var(--g);font-family:'Barlow Condensed';font-weight:700;font-size:18px;text-transform:uppercase;white-space:nowrap}
+.spec tbody tr:hover{background:#0f1a13}
+.note{margin-top:14px;color:var(--mut);font-size:14px;border-left:3px solid var(--money);padding-left:12px}
+.steps{display:grid;gap:14px;counter-reset:st}
+.step{display:flex;gap:20px;align-items:flex-start;background:var(--panel);padding:20px 22px;border:1px solid #16241b;counter-increment:st}
+.step::before{content:counter(st);font-family:Anton;font-size:34px;color:#000;background:var(--g);min-width:56px;height:56px;display:grid;place-items:center;transform:skew(var(--skew))}
+.step h4{font-family:'Barlow Condensed';font-size:22px;text-transform:uppercase}
+.step p{color:var(--mut);margin-top:4px;line-height:1.55}
+code,.cc{font-family:ui-monospace,Consolas,monospace;background:#000;border:1px solid var(--g3);color:var(--money);padding:2px 8px;font-size:.92em;word-break:break-all}
+.faq details{background:var(--panel);border-left:4px solid var(--g3);margin-bottom:10px;transition:.2s}
+.faq details[open]{border-left-color:var(--g)}
+.faq summary{cursor:pointer;padding:18px 20px;font-family:'Barlow Condensed';font-weight:700;font-size:20px;list-style:none;display:flex;justify-content:space-between}
+.faq summary::after{content:"+";color:var(--g);font-size:26px;line-height:1;transition:.2s}
+.faq details[open] summary::after{transform:rotate(45deg)}
+.faq details p{padding:0 20px 18px;color:var(--mut);line-height:1.6}
+
+/* blog */
+.filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:30px}
+.filters button{font-family:'Barlow Condensed';font-weight:700;font-size:17px;text-transform:uppercase;background:transparent;color:var(--txt);border:1px solid var(--g3);padding:7px 18px;cursor:pointer;transform:skew(var(--skew));transition:.2s}
+.filters button.on,.filters button:hover{background:var(--g);color:#000;border-color:var(--g)}
+.posts{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:22px}
+.pc{background:var(--panel);border:2px solid #000;display:flex;flex-direction:column;transition:.3s;animation:fadeUp .6s both}
+.pc:hover{transform:translateY(-8px);box-shadow:8px 8px 0 var(--g3)}
+.pc .cv{height:170px;position:relative;overflow:hidden}
+.pc .cv i{position:absolute;inset:0;transition:.6s}
+.pc:hover .cv i{transform:scale(1.1)}
+.pc .cv b{position:absolute;right:14px;bottom:6px;font-family:Anton;font-size:64px;color:rgba(0,0,0,.35)}
+.badge{position:absolute;left:12px;top:12px;background:#000;color:var(--g);font-family:'Barlow Condensed';font-weight:700;padding:3px 10px;text-transform:uppercase;transform:skew(var(--skew))}
+.pc .bd{padding:20px;flex:1;display:flex;flex-direction:column}
+.pc h3{font-size:24px;line-height:1.1;margin:8px 0 10px}
+.pc p{color:var(--mut);font-size:15px;line-height:1.5;flex:1}
+.meta{font-family:'Barlow Condensed';font-size:15px;color:var(--mut);text-transform:uppercase;letter-spacing:1px}
+.more{margin-top:14px;font-family:'Barlow Condensed';font-weight:800;font-style:italic;color:var(--g);text-transform:uppercase}
+@keyframes fadeUp{from{opacity:0;transform:translateY(30px)}}
+
+.post{max-width:800px;margin:0 auto;animation:fadeUp .5s}
+.post .back{font-family:'Barlow Condensed';font-weight:700;color:var(--g);text-transform:uppercase;font-size:18px}
+.post .hero-cv{height:260px;margin:22px 0 30px;position:relative;border:3px solid #000}
+.post h1{font-size:clamp(36px,6vw,64px);line-height:1;transform:skew(var(--skew));transform-origin:left;margin-top:10px}
+.post .content{font-size:17px;line-height:1.8;color:#cfe0d5}
+.post .content h2{font-size:30px;margin:36px 0 12px;color:var(--g)}
+.post .content p{margin-bottom:16px}
+.post .content ul,.post .content ol{margin:0 0 18px 22px}
+.post .content li{margin-bottom:8px}
+.post .content blockquote{border-left:4px solid var(--money);background:var(--panel);padding:14px 18px;margin:20px 0;color:var(--txt)}
+.post .content a{color:var(--g);text-decoration:underline}
+.pnav{display:flex;justify-content:space-between;gap:16px;margin-top:50px;padding-top:24px;border-top:2px solid var(--g3);flex-wrap:wrap}
+.pnav a{font-family:'Barlow Condensed';font-weight:700;font-size:18px;color:var(--g);max-width:48%}
+
+.conn{display:inline-flex;margin-top:26px;border:2px solid var(--g);background:#000;max-width:100%}
+.conn code{border:0;padding:12px 18px;font-size:16px}
+.conn button{background:var(--g);color:#000;border:0;font-family:'Barlow Condensed';font-weight:800;font-size:18px;padding:0 18px;cursor:pointer;text-transform:uppercase}
+#toast{position:fixed;left:50%;bottom:30px;transform:translate(-50%,120px);background:var(--g);color:#000;font-family:'Barlow Condensed';font-weight:800;font-size:20px;padding:10px 24px;z-index:300;transition:.3s}
+#toast.show{transform:translate(-50%,0)}
+footer a{color:var(--mut)}footer a:hover{color:var(--g)}
+@media(max-width:900px){.step{flex-direction:column}.pnav a{max-width:100%}}
+
+@media(max-width:900px){
+  nav ul{position:fixed;top:68px;right:0;flex-direction:column;background:#000;padding:24px 30px;transform:translateX(110%);transition:.3s;border-left:3px solid var(--g)}
+  nav ul.open{transform:none}
+  .burger{display:block}
+  .chars,.feat{grid-template-columns:1fr}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .gal{grid-template-columns:1fr 1fr;grid-template-rows:180px 180px 180px}
+  .gal div:first-child{grid-column:span 2;grid-row:auto}
+  .radar{width:110px;height:110px}
+  .hud{top:74px}
+  .cash{font-size:24px}.stars{font-size:18px}
+}
+</style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="bgart"></div>
+  <div class="ltitle">BAYIRKÖY RP</div>
+  <div class="tip" id="tip">İpucu: Emanet odası 3. katta.</div>
+  <div class="bar"><i id="lbar"></i></div>
+  <div class="spin"></div>
+</div>
+
+<!-- NAV -->
+<nav id="nav">
+  <a href="#/" class="logo"><span>BAYIR</span><b>KÖY</b></a>
+  <ul id="menu">
+    <li><a href="#/" data-r="">Ana Sayfa</a></li>
+    <li><a href="#/ekip" data-r="ekip">Etkinlik</a></li>
+    <li><a href="#/gereksinimler" data-r="gereksinimler">Gereksinimler</a></li>
+    <li><a href="#/blog" data-r="blog">Blog</a></li>
+    <li><a href="#/baglan" data-r="baglan" class="navcta">Bağlan</a></li>
+  </ul>
+  <button class="burger" id="burger">☰</button>
+</nav>
+
+<!-- HUD -->
+<div class="hud">
+  <div class="stars" id="stars"><i>★</i><i>★</i><i>★</i><i>★</i><i>★</i></div>
+  <div class="cash" id="cash">₺0</div>
+</div>
+<div class="radar">
+  <div class="sweep"></div>
+  <div class="blip" style="left:30%;top:28%"></div>
+  <div class="blip" style="left:68%;top:62%;animation-delay:.5s"></div>
+  <div class="blip" style="left:55%;top:20%;animation-delay:1s;background:#ff4d4d;box-shadow:0 0 8px #ff4d4d"></div>
+  <div class="me"></div>
+</div>
+
+<main id="v-home" class="view active">
+<!-- HERO -->
+<header class="hero">
+  <div class="sky"></div>
+  <div class="sun" id="sun"></div>
+  <div class="city" id="city">
+    <svg viewBox="0 0 1440 500" preserveAspectRatio="none">
+      <g fill="#04100a">
+        <rect x="0" y="260" width="90" height="240"/><rect x="80" y="180" width="70" height="320"/>
+        <rect x="150" y="300" width="60" height="200"/><rect x="200" y="120" width="80" height="380"/>
+        <polygon points="240,120 240,60 245,60 245,120"/><rect x="290" y="230" width="100" height="270"/>
+        <rect x="380" y="150" width="60" height="350"/><rect x="440" y="280" width="90" height="220"/>
+        <rect x="520" y="90" width="110" height="410"/><polygon points="575,90 575,20 580,20 580,90"/>
+        <rect x="640" y="210" width="70" height="290"/><rect x="700" y="160" width="90" height="340"/>
+        <rect x="790" y="270" width="60" height="230"/><rect x="840" y="110" width="80" height="390"/>
+        <rect x="920" y="240" width="110" height="260"/><rect x="1020" y="170" width="70" height="330"/>
+        <rect x="1090" y="290" width="80" height="210"/><rect x="1160" y="140" width="90" height="360"/>
+        <rect x="1250" y="250" width="70" height="250"/><rect x="1310" y="200" width="130" height="300"/>
+      </g>
+      <g fill="#2bd96b" opacity=".55" id="windows"></g>
+      <g fill="#010603" stroke="#2bd96b" stroke-width="2">
+        <polygon points="860,210 1060,140 1260,210"/>
+        <rect x="870" y="210" width="380" height="22"/>
+        <rect class="col" x="885" y="232" width="24" height="230"/><rect class="col" x="945" y="232" width="24" height="230"/>
+        <rect class="col" x="1005" y="232" width="24" height="230"/><rect class="col" x="1091" y="232" width="24" height="230"/>
+        <rect class="col" x="1151" y="232" width="24" height="230"/><rect class="col" x="1211" y="232" width="24" height="230"/>
+        <rect x="850" y="462" width="420" height="38"/>
+        <rect x="1036" y="380" width="48" height="82" fill="#2bd96b" opacity=".6"/>
+      </g>
+      <g stroke="#9cff57" stroke-width="3" fill="none" class="scales">
+        <line x1="1060" y1="160" x2="1060" y2="200"/><line x1="1030" y1="170" x2="1090" y2="170"/>
+        <path d="M1022 170 l-8 16 h16z M1098 170 l-8 16 h16z"/>
+      </g>
+      <text x="1060" y="226" fill="#9cff57" font-family="Anton" font-size="16" text-anchor="middle" letter-spacing="3">BAYIRKÖY ADLİYESİ</text>
+    </svg>
+  </div>
+  <canvas id="rain"></canvas>
+  <div class="hero-txt">
+    <div class="tag">FIVEM ROLEPLAY · YENİ ETKİNLİK</div>
+    <h1 id="htitle"><span>BAYIRKÖY</span><span class="g">SOYGUNU</span></h1>
+    <p>Bayırköy RP'nin yeni etkinliği başladı: Adliyenin bodrumunda yıllardır biriken rüşvet kasası. Herkes biliyor, kimse dokunamıyor. Ekibini kur, terazi ters dönsün.</p>
+    <div class="btns">
+      <button class="btn pri" id="playBtn">▶ Soygunu Başlat</button>
+      <a href="#/gereksinimler" class="btn sec">Nasıl Bağlanırım?</a>
+    </div>
+    <div class="srv"><i class="dot" id="srvDot"></i><span id="srvTxt">Sunucu bilgisi yükleniyor…</span></div>
+  </div>
+</header>
+
+<!-- CHARACTERS -->
+<section id="karakterler">
+  <div class="sh reveal"><small>// 3 KİŞİ, 1 KASA</small><h2>Soygun <em>Ekibi</em></h2></div>
+  <div class="chars">
+    <div class="card reveal">
+      <div class="art"><svg viewBox="0 0 200 260"><circle cx="100" cy="60" r="38" fill="#0a0a0a"/><rect x="70" y="40" width="60" height="12" fill="#2bd96b"/><path d="M30 260 Q30 120 100 110 Q170 120 170 260Z" fill="#0a0a0a"/><path d="M85 115 L100 170 L115 115" fill="#2bd96b"/></svg></div>
+      <div class="num">01</div>
+      <div class="info"><h3>Deniz "Kasa"</h3><p>Emekli kasa ustası. Adliyedeki çelik kasayı yıllar önce bizzat o monte etti, şifresini hâlâ hatırlıyor.</p></div>
+    </div>
+    <div class="card reveal" style="transition-delay:.1s">
+      <div class="art"><svg viewBox="0 0 200 260"><circle cx="100" cy="62" r="36" fill="#0a0a0a"/><path d="M60 50 Q100 0 140 50 L140 42 Q100 10 60 42Z" fill="#9cff57"/><path d="M25 260 Q30 115 100 108 Q170 115 175 260Z" fill="#0a0a0a"/><rect x="60" y="150" width="80" height="8" fill="#9cff57"/></svg></div>
+      <div class="num">02</div>
+      <div class="info"><h3>Arda "Turbo"</h3><p>Adliye servis minibüsünün şoförü. Kaçış rotası kafasında, otoparkın her çıkışını ezbere bilir.</p></div>
+    </div>
+    <div class="card reveal" style="transition-delay:.2s">
+      <div class="art"><svg viewBox="0 0 200 260"><circle cx="100" cy="60" r="36" fill="#0a0a0a"/><rect x="72" y="52" width="56" height="12" rx="4" fill="#2bd96b"/><path d="M35 260 Q35 118 100 108 Q165 118 165 260Z" fill="#0a0a0a"/><circle cx="100" cy="170" r="14" fill="none" stroke="#2bd96b" stroke-width="4"/></svg></div>
+      <div class="num">03</div>
+      <div class="info"><h3>Selin "Ağ"</h3><p>Hacker. Binanın 48 kamerasını döngüye alır, kimse ekranda bir şey fark etmez.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats" id="stats">
+  <div class="stat"><b data-to="7">0</b><span>Kat</span></div>
+  <div class="stat"><b data-to="48">0</b><span>Kamera</span></div>
+  <div class="stat"><b data-to="3">0</b><span>Kasa</span></div>
+  <div class="stat"><b data-to="12">0</b><span>Dakika Süre</span></div>
+</div>
+
+<!-- FEATURES -->
+<section id="ozellikler">
+  <div class="sh reveal"><small>// OPERASYON PLANI</small><h2>Adım Adım <em>Soygun</em></h2></div>
+  <div class="feat">
+    <div class="f reveal"><div class="ic">🕵️</div><h3>1. Keşif</h3><p>Duruşma saatlerini, nöbetçileri ve zarfların geldiği günleri not al.</p></div>
+    <div class="f reveal" style="transition-delay:.1s"><div class="ic">💼</div><h3>2. Sızma</h3><p>Avukat cübbesiyle girişten geç, arşiv katından bodruma in.</p></div>
+    <div class="f reveal" style="transition-delay:.2s"><div class="ic">🔐</div><h3>3. Kasa</h3><p>Kameralar döngüdeyken emanet odasındaki rüşvet kasasını aç.</p></div>
+    <div class="f reveal" style="transition-delay:.3s"><div class="ic">🚐</div><h3>4. Kaçış</h3><p>Servis minibüsüyle otoparktan çık, sahil yoluna kaybol.</p></div>
+  </div>
+</section>
+
+<!-- GALLERY -->
+<section id="galeri">
+  <div class="sh reveal"><small>// KEŞİF FOTOĞRAFLARI</small><h2>Hedef <em>Bina</em></h2></div>
+  <div class="gal reveal">
+    <div><i style="background:linear-gradient(180deg,#0b3a1c,#2bd96b 90%),#000"></i><span>Adliye Girişi</span></div>
+    <div><i style="background:repeating-linear-gradient(45deg,#0d2a17 0 20px,#123a20 20px 40px)"></i><span>Arşiv Katı</span></div>
+    <div><i style="background:radial-gradient(circle at 30% 70%,#9cff57,#0a1f10 60%)"></i><span>Emanet Odası</span></div>
+    <div><i style="background:linear-gradient(135deg,#041409,#18a34d)"></i><span>Otopark Çıkışı</span></div>
+    <div><i style="background:conic-gradient(from 90deg,#0f5150,#04140a,#2bd96b,#0f5150)"></i><span>Hakim Koridoru</span></div>
+  </div>
+</section>
+
+<!-- LATEST POSTS -->
+<section id="sonyazilar">
+  <div class="sh reveal"><small>// BLOG</small><h2>Son <em>Yazılar</em></h2></div>
+  <div class="posts" id="homePosts"></div>
+  <div style="margin-top:34px"><a href="#/blog" class="btn sec">Tüm Yazılar →</a></div>
+</section>
+
+<!-- CTA -->
+<section class="cta" id="oyna">
+  <div class="reveal">
+    <h2>Terazi <em>Ters Dönsün</em></h2>
+    <button class="btn pri" id="playBtn2">Soyguna Katıl</button>
+    <br><div class="conn"><code id="connTxt"></code><button id="copyConn">Kopyala</button></div>
+    <div class="plat"><span>FiveM</span><span>Sesli RP</span><span>Whitelist</span><span>7/24 Açık</span></div>
+  </div>
+</section>
+
+</main>
+
+<!-- ===== GEREKSİNİMLER ===== -->
+<main id="v-req" class="view page">
+  <div class="sh"><small>// TEKNİK GEREKSİNİMLER</small><h2>Sunucuya <em>Hazır mısın?</em></h2>
+  <p class="lead">Bayırköy RP, GTA V'nin çok oyunculu modu FiveM üzerinde çalışan bir rol yapma sunucusudur. Bağlanmadan önce bilgisayarının ve hesaplarının hazır olduğundan emin ol.</p></div>
+
+  <h3 class="sub">Olmazsa olmazlar</h3>
+  <div class="must">
+    <div class="f"><div class="ic">🎮</div><h3>Yasal GTA V</h3><p>Steam, Epic Games veya Rockstar Games Launcher'dan alınmış PC sürümü. Korsan kopyalar FiveM'de çalışmaz.</p></div>
+    <div class="f"><div class="ic">🧩</div><h3>FiveM İstemcisi</h3><p>fivem.net'ten ücretsiz indirilir. Kurulumda GTA V klasörünü göstermen yeterli.</p></div>
+    <div class="f"><div class="ic">🎙️</div><h3>Mikrofon</h3><p>Sesli RP zorunlu. Bas-konuş tuşu ayarlı, yankısız bir mikrofon yeterli.</p></div>
+    <div class="f"><div class="ic">💬</div><h3>Discord</h3><p>Duyurular, destek ve whitelist başvurusu Discord üzerinden yapılır.</p></div>
+    <div class="f"><div class="ic">🌐</div><h3>İnternet</h3><p>Stabil bağlantı, 10 Mbps üstü ve düşük ping önerilir. İlk girişte sunucu dosyaları iner.</p></div>
+  </div>
+
+  <h3 class="sub">Sistem gereksinimleri</h3>
+  <div class="tbl"><table class="spec">
+    <thead><tr><th>Bileşen</th><th>Minimum (GTA V)</th><th>Önerilen (GTA V)</th><th>Rahat RP (bizim önerimiz)</th></tr></thead>
+    <tbody>
+      <tr><td>İşletim Sistemi</td><td>Windows 10 64-bit</td><td>Windows 10 / 11 64-bit</td><td>Windows 11 64-bit</td></tr>
+      <tr><td>İşlemci</td><td>Intel Core 2 Quad Q6600 / AMD Phenom 9850</td><td>Intel Core i5-3470 / AMD FX-8350</td><td>Intel Core i5-10400 / AMD Ryzen 5 3600</td></tr>
+      <tr><td>RAM</td><td>4 GB</td><td>8 GB</td><td>16 GB</td></tr>
+      <tr><td>Ekran Kartı</td><td>NVIDIA 9800 GT 1 GB / AMD HD 4870 1 GB</td><td>NVIDIA GTX 660 2 GB / AMD HD 7870 2 GB</td><td>NVIDIA GTX 1660 6 GB / AMD RX 580 8 GB</td></tr>
+      <tr><td>Depolama</td><td>~120 GB boş alan</td><td>~120 GB, SSD tercih</td><td>150 GB+ SSD (oyun + FiveM önbelleği)</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">Minimum değerlerle oyun açılır ama kalabalık bölgelerde ve özel araç/harita içeren RP sunucularında FPS ciddi düşer. Akıcı oynamak için son sütunu hedefle. GTA V'nin resmi gereksinimleri zamanla değişebilir, mağaza sayfasından kontrol et.</p>
+
+  <h3 class="sub">5 adımda bağlan</h3>
+  <div class="steps">
+    <div class="step"><div><h4>GTA V'yi kur</h4><p>Steam, Epic veya Rockstar Launcher'dan kur. Rockstar hesabınla giriş yapıp oyunu bir kez aç-kapa.</p></div></div>
+    <div class="step"><div><h4>FiveM'i indir</h4><p>fivem.net → Download Client. Kurulum sırasında GTA V'nin yüklü olduğu klasörü seç.</p></div></div>
+    <div class="step"><div><h4>Discord'a katıl</h4><p>Kuralları oku ve whitelist başvurunu yap. Onay gelince sunucuya girebilirsin.</p></div></div>
+    <div class="step"><div><h4>Bağlan</h4><p>FiveM'de <b>F8</b> ile konsolu aç ve <span class="cc" data-conn></span> yaz. Ya da sunucu listesinde "Bayırköy" ara.</p></div></div>
+    <div class="step"><div><h4>İlk giriş</h4><p>Sunucu dosyaları iner, bu birkaç dakika sürebilir. Karakterini oluştur, Bayırköy'e hoş geldin.</p></div></div>
+  </div>
+
+  <h3 class="sub">Sık sorulan sorular</h3>
+  <div class="faq">
+    <details><summary>Korsan GTA V ile girebilir miyim?</summary><p>Hayır. FiveM, yasal ve Rockstar hesabına bağlı bir GTA V kopyası ister.</p></details>
+    <details><summary>Laptopta oynanır mı?</summary><p>Önerilen değerleri karşılayan, harici ekran kartlı bir laptop yeterli. Şarja takılı ve yüksek performans modunda oyna.</p></details>
+    <details><summary>Yüklenirken takılıyor, ne yapmalıyım?</summary><p>FiveM önbelleğini temizle: <code>%localappdata%\FiveM\FiveM.app\data</code> içindeki <code>cache</code>, <code>server-cache</code> ve <code>server-cache-priv</code> klasörlerini sil. Detaylar için <a href="#/blog/fps-artirma" style="color:var(--g)">FPS rehberine</a> bak.</p></details>
+    <details><summary>Konsolda veya Mac'te oynanır mı?</summary><p>Hayır, FiveM yalnızca Windows PC'de resmi olarak çalışır.</p></details>
+    <details><summary>Whitelist ne kadar sürer?</summary><p>Başvurular genelde 24-48 saat içinde Discord üzerinden yanıtlanır.</p></details>
+  </div>
+</main>
+
+<!-- ===== BLOG ===== -->
+<main id="v-blog" class="view page">
+  <div class="sh"><small>// BLOG</small><h2>Bayırköy <em>Gazetesi</em></h2>
+  <p class="lead">Duyurular, güncelleme notları, rehberler ve teknik yazılar.</p></div>
+  <div class="filters" id="filters"></div>
+  <div class="posts" id="allPosts"></div>
+</main>
+
+<!-- ===== YAZI ===== -->
+<main id="v-post" class="view page"><article class="post" id="postBody"></article></main>
+
+<footer>
+  <span>© 2027 Bayırköy RP — Kurgusal bir FiveM sunucusu. Rockstar Games veya Cfx.re ile bağlantılı değildir. Gerçek kişi ve kurumlarla ilgisi yoktur.</span>
+  <span><a href="#/gereksinimler">Gereksinimler</a> · <a href="#/blog">Blog</a> · <a href="#/blog/rp-kurallari">Kurallar</a> · <a href="#" class="dc">Discord</a></span>
+</footer>
+<div id="toast">Kopyalandı!</div>
+
+<!-- MISSION -->
+<div id="mission"><h2>SOYGUN BAŞARILI</h2><p id="mReward">+₺250.000</p></div>
+
+<script>
+// ===== LOADER =====
+const tips=["İpucu: Emanet odası 3. katta.","İpucu: Yıldızlar arttıkça jandarma da artar.","İpucu: Zarflar her cuma gelir.","İpucu: Cübbe giyen kimse sorgulanmaz."];
+let p=0,t=0;const lbar=document.getElementById('lbar'),tipEl=document.getElementById('tip');
+const li=setInterval(()=>{p+=Math.random()*14;if(p>=100){p=100;clearInterval(li);setTimeout(()=>{loader.style.opacity=0;setTimeout(()=>{loader.remove();startHero()},800)},300)}lbar.style.width=p+'%';if(++t%5===0)tipEl.textContent=tips[(t/5)%tips.length|0]},180);
+
+function startHero(){
+  // harf harf başlık
+  document.querySelectorAll('#htitle span').forEach((s,si)=>{
+    const txt=s.textContent;s.textContent='';
+    [...txt].forEach((c,i)=>{const e=document.createElement('span');e.className='ch';e.textContent=c;e.style.animationDelay=(si*.35+i*.07)+'s';s.appendChild(e)});
+  });
+}
+
+// ===== NAV =====
+const nav=document.getElementById('nav');
+addEventListener('scroll',()=>nav.classList.toggle('solid',scrollY>50));
+burger.onclick=()=>menu.classList.toggle('open');
+menu.querySelectorAll('a').forEach(a=>a.onclick=()=>menu.classList.remove('open'));
+
+// ===== WINDOWS =====
+const wg=document.getElementById('windows');
+document.querySelectorAll('.city g:first-child rect').forEach(r=>{
+  const x=+r.getAttribute('x'),y=+r.getAttribute('y'),w=+r.getAttribute('width');
+  for(let yy=y+15;yy<480;yy+=22)for(let xx=x+8;xx<x+w-10;xx+=16)
+    if(Math.random()<.35){const n=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      n.setAttribute('x',xx);n.setAttribute('y',yy);n.setAttribute('width',7);n.setAttribute('height',10);
+      n.style.animation=`bl ${2+Math.random()*5}s ${Math.random()*5}s infinite`;wg.appendChild(n)}
+});
+
+// ===== PARALLAX =====
+addEventListener('scroll',()=>{
+  const y=scrollY;
+  city.style.transform=`translateY(${y*.25}px)`;
+  sun.style.transform=`translateY(${y*.5}px)`;
+  // wanted stars
+  const ratio=y/(document.body.scrollHeight-innerHeight);
+  const n=Math.round(ratio*5);
+  document.querySelectorAll('#stars i').forEach((s,i)=>s.classList.toggle('on',i<n));
+});
+
+// ===== MONEY RAIN =====
+const cv=document.getElementById('rain'),ctx=cv.getContext('2d');let bills=[];
+function rs(){cv.width=cv.offsetWidth;cv.height=cv.offsetHeight}rs();addEventListener('resize',rs);
+for(let i=0;i<40;i++)bills.push(nb(true));
+function nb(r){return{x:Math.random()*cv.width,y:r?Math.random()*cv.height:-30,s:.6+Math.random()*1.4,a:Math.random()*6,v:.02+Math.random()*.04,w:22+Math.random()*16}}
+(function draw(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  bills.forEach((b,i)=>{
+    b.y+=b.s;b.a+=b.v;b.x+=Math.sin(b.a)*.8;
+    ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.sin(b.a)*.8);ctx.scale(1,Math.cos(b.a*1.5));
+    ctx.fillStyle='rgba(156,255,87,.75)';ctx.fillRect(-b.w/2,-b.w/4,b.w,b.w/2);
+    ctx.fillStyle='rgba(13,92,44,.9)';ctx.font=`bold ${b.w/3}px Anton`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('₺',0,1);
+    ctx.restore();
+    if(b.y>cv.height+30)bills[i]=nb();
+  });
+  requestAnimationFrame(draw);
+})();
+
+// ===== CASH HUD =====
+let money=0,target=1250;const cashEl=document.getElementById('cash');
+function addMoney(v){target+=v;cashEl.classList.remove('pop');void cashEl.offsetWidth;cashEl.classList.add('pop')}
+(function tick(){money+=(target-money)*.08;cashEl.textContent='₺'+Math.round(money).toLocaleString('tr-TR');requestAnimationFrame(tick)})();
+setInterval(()=>addMoney(500+Math.random()*2000|0),3000);
+
+// ===== REVEAL + COUNTERS =====
+const io=new IntersectionObserver(es=>es.forEach(e=>{
+  if(!e.isIntersecting)return;
+  e.target.classList.add('in');
+  if(e.target.id==='stats')e.target.querySelectorAll('b').forEach(b=>{
+    const to=+b.dataset.to;let c=0;const st=setInterval(()=>{c+=Math.ceil(to/40);if(c>=to){c=to;clearInterval(st)}b.textContent=c},30)});
+  io.unobserve(e.target);
+}),{threshold:.2});
+document.querySelectorAll('.reveal,#stats').forEach(el=>io.observe(el));
+
+// ===== MISSION =====
+function mission(){
+  const r=100000+Math.random()*900000|0;
+  mReward.textContent='+₺'+r.toLocaleString('tr-TR');
+  const m=document.getElementById('mission');m.classList.remove('show');void m.offsetWidth;m.classList.add('show');
+  addMoney(r);
+  setTimeout(()=>m.classList.remove('show'),2500);
+}
+playBtn.onclick=mission;playBtn2.onclick=mission;
+document.getElementById('mission').onclick=e=>e.currentTarget.classList.remove('show');
+
+// ===== AYARLAR (kendine göre değiştir) =====
+const CFG={
+  connect:'connect play.bayirkoyrp.com',   // F8 komutu
+  discord:'https://discord.gg/ORNEK',      // Discord davet linki
+  status:''                                // ör: 'http://SUNUCU_IP:30120' (boşsa durum çekilmez)
+};
+
+// ===== BLOG VERİSİ =====
+const POSTS=[
+{slug:'guncelleme-1-2',title:'Güncelleme v1.2: Adliye Soygunu Etkinliği',cat:'Güncelleme',date:'2026-10-24',read:4,
+ bg:'linear-gradient(135deg,#0b3a1c,#2bd96b)',
+ ex:'Yeni soygun etkinliği, ekonomi dengelemeleri ve 14 hata düzeltmesi bu güncellemede.',
+ html:`<p>Uzun süredir beklenen etkinlik yayında. Bayırköy Adliyesi'nin bodrumundaki emanet kasası artık soyulabilir, ama kolay olacağını sanmayın.</p>
+<h2>Yeni içerikler</h2><ul><li>3 aşamalı adliye soygunu (keşif, sızma, kaçış)</li><li>Kamera döngüsü mini oyunu ve kasa kilidi bulmacası</li><li>Soygun sırasında jandarma için yeni ihbar sistemi</li><li>Adliye iç mekanı ve otopark haritası</li></ul>
+<h2>Ekonomi</h2><ul><li>Soygun ödülü ekip sayısına göre bölünüyor (en az 3, en fazla 5 kişi)</li><li>Aynı ekip 6 saatte bir soygun başlatabilir</li><li>Kara para aklama ücreti %25'ten %30'a çıktı</li></ul>
+<h2>Düzeltmeler</h2><p>Envanter kopyalama hatası, telefonda mesaj kaybolması ve araç bagajının açık kalması dahil 14 hata giderildi.</p>
+<blockquote>Etkinlik başlangıcında yoğunluk olabilir. Girişte sıra beklerseniz önbelleği temizlemeden önce birkaç dakika bekleyin.</blockquote>`},
+{slug:'sunucu-acildi',title:'Bayırköy RP Kapılarını Açtı',cat:'Duyuru',date:'2026-10-20',read:2,
+ bg:'radial-gradient(circle at 30% 70%,#9cff57,#0a1f10 60%)',
+ ex:'Aylardır süren kapalı testin ardından sunucumuz herkese açık. İlk hafta sürprizleri burada.',
+ html:`<p>Kapalı beta sona erdi, Bayırköy artık herkese açık! Testlerde emeği geçen herkese teşekkürler.</p>
+<h2>İlk hafta</h2><ul><li>Tüm yeni oyunculara başlangıç parası ve ücretsiz ehliyet</li><li>Meslek ilanları: polis, EMS, mekanik, taksi ve avukat</li><li>Her akşam 21:00'de Discord'da tanışma etkinliği</li></ul>
+<p>Bağlanmak için <a href="#/gereksinimler">teknik gereksinimler</a> sayfasındaki 5 adımı takip et.</p>`},
+{slug:'fivem-kurulum-rehberi',title:'Sıfırdan FiveM Kurulumu: 10 Dakikada Sunucudasın',cat:'Rehber',date:'2026-10-18',read:6,
+ bg:'linear-gradient(135deg,#041409,#18a34d)',
+ ex:'GTA V kurulumundan F8 konsoluna kadar adım adım FiveM kurulum rehberi.',
+ html:`<p>FiveM, GTA V için geliştirilmiş bir çok oyunculu platformdur ve topluluk sunucularına bağlanmanı sağlar. Kurulum sanıldığı kadar zor değil.</p>
+<h2>1. GTA V</h2><p>Steam, Epic Games veya Rockstar Games Launcher üzerinden yasal bir GTA V kopyası kur. Kurulum bitince oyunu Rockstar hesabınla en az bir kez açıp kapat.</p>
+<h2>2. FiveM istemcisi</h2><ol><li>fivem.net adresine gir ve <b>Download Client</b> butonuna tıkla.</li><li>İndirilen dosyayı GTA V klasöründen <b>farklı</b> bir klasörde çalıştır.</li><li>İlk açılışta FiveM, GTA V'nin yerini sorarsa oyunun kurulu olduğu klasörü seç.</li><li>Rockstar hesabınla giriş yap ve güncellemelerin inmesini bekle.</li></ol>
+<h2>3. Bağlanma</h2><p>FiveM açıldıktan sonra <b>F8</b> tuşuna bas ve konsola sunucu adresini yaz:</p><p><span class="cc" data-conn></span></p>
+<p>Ya da Oyna → Sunucular listesinde "Bayırköy" ara ve favorilere ekle.</p>
+<blockquote>Antivirüsün FiveM'i engelliyorsa FiveM klasörünü istisnalara ekle. Oyun içi hile yazılımları anında ban sebebidir.</blockquote>`},
+{slug:'rp-kurallari',title:'Temel RP Kuralları: RDM, VDM ve Metagaming',cat:'Kurallar',date:'2026-10-15',read:5,
+ bg:'conic-gradient(from 90deg,#0f5150,#04140a,#2bd96b,#0f5150)',
+ ex:'Sunucuya girmeden önce bilmen gereken temel roleplay kavramları ve yasaklar.',
+ html:`<p>İyi bir RP herkesin eğlendiği RP'dir. Aşağıdaki kurallar tüm oyuncular için geçerlidir; ihlaller uyarı, atılma veya ban ile sonuçlanır.</p>
+<h2>Yasaklar</h2><ul><li><b>RDM (Random Deathmatch):</b> Sebepsiz yere başka bir oyuncuya saldırmak.</li><li><b>VDM (Vehicle Deathmatch):</b> Aracı silah gibi kullanıp oyuncuları ezmek.</li><li><b>Metagaming:</b> Discord, yayın gibi oyun dışı bilgileri oyun içinde kullanmak.</li><li><b>Powergaming:</b> Gerçekçi olmayan hareketlerle karşı tarafa RP şansı tanımamak.</li><li><b>Fail RP:</b> Karakterin hayatını hiçe sayan davranışlar (silah doğrultulmuşken kaçmak gibi).</li></ul>
+<h2>Soygun kuralları</h2><ul><li>Adliye soygunu için en az 3, en fazla 5 kişi gerekir.</li><li>Sunucuda en az 4 aktif polis yoksa soygun başlatılamaz.</li><li>Rehine alınırsa pazarlık RP'si zorunludur.</li></ul>
+<blockquote>Bir kuraldan emin değilsen oyun içinde <b>/rapor</b> yaz ya da Discord'dan yetkiliye sor.</blockquote>`},
+{slug:'fps-artirma',title:"FiveM'de FPS Artırma: Ayarlar ve Önbellek Temizliği",cat:'Teknik',date:'2026-10-12',read:7,
+ bg:'repeating-linear-gradient(45deg,#0d2a17 0 20px,#123a20 20px 40px)',
+ ex:'Kalabalık bölgelerde düşen FPS için grafik ayarları, önbellek temizliği ve Windows ipuçları.',
+ html:`<p>RP sunucularında özel araçlar, haritalar ve kalabalık oyuncu sayısı nedeniyle FPS normal GTA V'ye göre daha düşüktür. Bu ayarlar fark yaratır.</p>
+<h2>Grafik ayarları</h2><ul><li><b>Gölge kalitesi:</b> Yüksek → Normal (en büyük kazanç)</li><li><b>Çim kalitesi:</b> Normal</li><li><b>MSAA:</b> Kapalı, yerine FXAA kullan</li><li><b>Yansıma kalitesi:</b> Normal</li><li><b>Uzak gölgeler ve yüksek detaylı akış:</b> Kapalı</li><li><b>Nüfus yoğunluğu:</b> Sunucu tarafından yönetilir, değiştirmen gerekmez</li></ul>
+<h2>Önbellek temizliği</h2><p>Takılma, yükleme ekranında donma veya doku hatalarında önbelleği temizle:</p><ol><li>FiveM'i tamamen kapat.</li><li><b>Win + R</b> → <code>%localappdata%\\FiveM\\FiveM.app\\data</code></li><li><code>cache</code>, <code>server-cache</code> ve <code>server-cache-priv</code> klasörlerini sil.</li><li>FiveM'i aç, sunucu dosyaları yeniden inecek.</li></ol>
+<h2>Windows tarafı</h2><ul><li>Güç planını <b>Yüksek Performans</b> yap.</li><li>Ekran kartı sürücülerini güncel tut.</li><li>Oyun sırasında tarayıcı ve arka plan uygulamalarını kapat.</li><li>Oyunu HDD yerine SSD'ye kur.</li></ul>`},
+{slug:'whitelist-basvuru',title:'Whitelist Başvurusu Nasıl Yapılır?',cat:'Rehber',date:'2026-10-10',read:3,
+ bg:'linear-gradient(180deg,#0b3a1c,#2bd96b 90%)',
+ ex:'Başvuru formunda nelere dikkat etmeli, mülakatta neler soruluyor?',
+ html:`<p>Bayırköy RP, kaliteli RP için whitelist sistemi kullanır. Başvurmak tamamen ücretsizdir.</p>
+<h2>Adımlar</h2><ol><li>Discord sunucumuza katıl ve <b>#kurallar</b> kanalını oku.</li><li><b>#başvuru</b> kanalındaki formu doldur: karakter adı, yaşı ve kısa geçmiş hikayesi.</li><li>Onaylanırsan sesli mülakata çağrılırsın (yaklaşık 10 dakika).</li><li>Mülakatı geçince rolün verilir ve sunucuya girebilirsin.</li></ol>
+<h2>Mülakatta neler sorulur?</h2><ul><li>RDM, VDM, metagaming gibi temel kavramlar</li><li>Örnek bir senaryoda ne yapacağın</li><li>Karakterinin hikayesi ve hedefleri</li></ul>
+<blockquote>Kısa ama özgün bir karakter hikayesi, uzun ve kopyala-yapıştır bir hikayeden her zaman daha iyidir.</blockquote>`}
+].sort((a,b)=>b.date.localeCompare(a.date));
+
+const fmtDate=d=>new Date(d+'T12:00').toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'});
+const card=(p,i)=>`<a class="pc" href="#/blog/${p.slug}" style="animation-delay:${i*.07}s">
+  <div class="cv"><i style="background:${p.bg}"></i><span class="badge">${p.cat}</span><b>${String(i+1).padStart(2,'0')}</b></div>
+  <div class="bd"><div class="meta">${fmtDate(p.date)} · ${p.read} dk okuma</div><h3>${p.title}</h3><p>${p.ex}</p><div class="more">Devamını oku →</div></div></a>`;
+
+function fillConn(){document.querySelectorAll('[data-conn]').forEach(e=>e.textContent=CFG.connect)}
+function renderHome(){homePosts.innerHTML=POSTS.slice(0,3).map(card).join('')}
+let curCat='Tümü';
+function renderBlog(){
+  const cats=['Tümü',...new Set(POSTS.map(p=>p.cat))];
+  filters.innerHTML=cats.map(c=>`<button class="${c===curCat?'on':''}" data-c="${c}">${c}</button>`).join('');
+  filters.querySelectorAll('button').forEach(b=>b.onclick=()=>{curCat=b.dataset.c;renderBlog()});
+  allPosts.innerHTML=POSTS.filter(p=>curCat==='Tümü'||p.cat===curCat).map(card).join('');
+}
+function renderPost(slug){
+  const i=POSTS.findIndex(p=>p.slug===slug),p=POSTS[i];
+  if(!p){postBody.innerHTML=`<a class="back" href="#/blog">← Blog</a><h1>Yazı bulunamadı</h1>`;return}
+  const prev=POSTS[i+1],next=POSTS[i-1];
+  postBody.innerHTML=`<a class="back" href="#/blog">← Tüm yazılar</a>
+  <div class="hero-cv" style="background:${p.bg}"><span class="badge">${p.cat}</span></div>
+  <div class="meta">${fmtDate(p.date)} · ${p.read} dk okuma</div><h1>${p.title}</h1><br>
+  <div class="content">${p.html}</div>
+  <div class="pnav">${prev?`<a href="#/blog/${prev.slug}">← ${prev.title}</a>`:'<span></span>'}${next?`<a href="#/blog/${next.slug}" style="text-align:right">${next.title} →</a>`:''}</div>`;
+  document.title=p.title+' — Bayırköy RP';
+  fillConn();
+}
+
+// ===== ROUTER =====
+function show(id){document.body.classList.toggle('inner',id!=='v-home');document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===id))}
+function toTop(){window.scrollTo({top:0,behavior:'instant'})}
+function route(){
+  const [a='',b]=decodeURIComponent(location.hash.replace(/^#\/?/,'')).split('/');
+  document.title='Bayırköy RP — FiveM Roleplay Sunucusu';
+  if(a==='gereksinimler'){show('v-req');toTop()}
+  else if(a==='blog'&&b){renderPost(b);show('v-post');toTop()}
+  else if(a==='blog'){renderBlog();show('v-blog');toTop()}
+  else{
+    show('v-home');
+    const t={ekip:'karakterler',plan:'ozellikler',baglan:'oyna'}[a];
+    if(t)setTimeout(()=>document.getElementById(t).scrollIntoView({behavior:'smooth'}),60);else toTop();
+  }
+  document.querySelectorAll('#menu a[data-r]').forEach(l=>l.classList.toggle('act',l.dataset.r===(b?'blog':a)));
+}
+addEventListener('hashchange',route);
+
+// ===== CONNECT / DISCORD / DURUM =====
+function toast(t){const e=document.getElementById('toast');e.textContent=t;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),1800)}
+connTxt.textContent=CFG.connect;
+copyConn.onclick=async()=>{try{await navigator.clipboard.writeText(CFG.connect);toast('Kopyalandı! F8 → yapıştır')}catch(e){toast(CFG.connect)}};
+document.querySelectorAll('.dc').forEach(a=>{a.href=CFG.discord;a.target='_blank';a.rel='noopener'});
+async function status(){
+  if(!CFG.status){srvTxt.textContent='F8 → '+CFG.connect;return}
+  try{
+    const r=await fetch(CFG.status+'/players.json',{cache:'no-store'});
+    const pl=await r.json();srvTxt.textContent=`Çevrimiçi · ${pl.length} oyuncu`;
+  }catch(e){srvDot.classList.add('off');srvTxt.textContent='Sunucu durumu alınamadı'}
+}
+
+renderHome();fillConn();status();route();setInterval(status,60000);
+</script>
+</body>
+</html>

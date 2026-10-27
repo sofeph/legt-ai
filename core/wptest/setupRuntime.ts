@@ -64,6 +64,16 @@ function unzip(zip: string, destDir: string, exclude: string[], signal?: AbortSi
   })
 }
 
+/** Sistem curl'ü (Windows 10+, macOS, Linux'ta var); yönlendirmeleri izler, hata kodunda başarısız sayılır */
+function curlDownload(url: string, dest: string, signal?: AbortSignal): Promise<boolean> {
+  return new Promise((resolve) => {
+    const p = spawn('curl', ['-L', '-f', '-sS', '--retry', '2', '--connect-timeout', '30', '-A', 'Wget/1.21 (legt-ai)', '-o', dest, url], { stdio: 'ignore', windowsHide: true })
+    p.on('error', () => resolve(false))
+    p.on('exit', (code) => resolve(code === 0))
+    signal?.addEventListener('abort', () => p.kill(), { once: true })
+  })
+}
+
 export interface SetupOptions {
   runtimeDir: string
   force?: boolean
@@ -85,7 +95,24 @@ export async function setupRuntime(opts: SetupOptions): Promise<void> {
     if (!opts.force && existsSync(dest)) return dest
     await mkdir(cache, { recursive: true })
     onProgress({ step, message: `${name} indiriliyor…`, percent: 0 })
-    const res = await fetchStream(url)
+    let res: IncomingMessage | null = null
+    let failure = ''
+    // Node'un ağ yığını bazı CDN adreslerine (ETIMEDOUT) bağlanamazken sistem curl'ü bağlanabiliyor: önce iki deneme, sonra curl
+    for (let attempt = 0; attempt < 2 && !res; attempt++) {
+      try {
+        res = await fetchStream(url)
+      } catch (e) {
+        const err = e as Error & { errors?: Error[] }
+        failure = err.message || err.errors?.map((x) => x.message).join('; ') || String(e)
+      }
+    }
+    if (!res) {
+      onProgress({ step, message: `${name}: Node bağlanamadı, sistem curl ile deneniyor…`, percent: null })
+      const ok = await curlDownload(url, dest + '.part', signal)
+      if (!ok) throw new Error(`${name} indirilemedi (${new URL(url).host}): ${failure}. İnternet bağlantınızı kontrol edip yeniden deneyin; kısmen inenler korunur.`)
+      await rename(dest + '.part', dest)
+      return dest
+    }
     const total = Number(res.headers['content-length']) || 0
     let done = 0
     let last = 0

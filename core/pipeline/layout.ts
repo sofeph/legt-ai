@@ -48,6 +48,35 @@ function uniqueNames<T>(items: T[], name: (t: T) => string): Map<T, string> {
  * Widget adlarını (`{prefix}-{ad}`), pattern slug'larını (`{slug}/{ad}`) ve JS sınıf adlarını
  * benzersiz ve dosya adlarıyla tutarlı hâle getirir. Analizden hemen sonra çalışır.
  */
+/**
+ * Modeller kontrol listesine bazen dizge yerine nesne yazar ({ "id": "title", "type": "text" }).
+ * Ad olarak id / name / key / control / label alanı, yoksa ilk dizge değeri alınır; tekrarlar atılır.
+ */
+export function controlNames(list: unknown): string[] {
+  if (!Array.isArray(list)) return []
+  const names = list.map((c) => {
+    if (typeof c === 'string') return c.trim()
+    if (c && typeof c === 'object') {
+      const o = c as Record<string, unknown>
+      const v = [o.id, o.name, o.key, o.control, o.label, o.slug].find((x) => typeof x === 'string' && x.trim())
+      return typeof v === 'string' ? v.trim() : (Object.values(o).find((x): x is string => typeof x === 'string' && !!x.trim()) ?? '').trim()
+    }
+    return c === null || c === undefined ? '' : String(c).trim()
+  })
+  return [...new Set(names.filter(Boolean))]
+}
+
+/** Elementor planındaki kontrol listelerini dizgeye çevirir (yükleme sırasında da çalışır) */
+export function coerceControls(plan: Plan | null): Plan | null {
+  if (plan && plan.mode === 'elementor-free') {
+    for (const s of plan.sections) {
+      s.contentControls = controlNames(s.contentControls)
+      s.styleControls = controlNames(s.styleControls)
+    }
+  }
+  return plan
+}
+
 export function normalizePlan(plan: Plan): Plan {
   const prefix = plan.theme.prefix
   if (plan.mode === 'elementor-free') {
@@ -55,8 +84,8 @@ export function normalizePlan(plan: Plan): Plan {
     plan.sections = plan.sections.map((s) => ({
       ...s,
       widget: `${prefix}-${names.get(s)}`,
-      contentControls: Array.isArray(s.contentControls) ? s.contentControls : [],
-      styleControls: Array.isArray(s.styleControls) ? s.styleControls : [],
+      contentControls: controlNames(s.contentControls),
+      styleControls: controlNames(s.styleControls),
       repeater: s.repeater ?? null,
       js: s.js || 'none',
       proReplacement: s.proReplacement ?? null
