@@ -3,6 +3,8 @@ import type { LLMSettings, ModelInfo } from '../types'
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant'
   content: string
+  /** Görsel girdi (base64, data: öneki olmadan); yalnızca görsel destekleyen modellerde */
+  images?: string[]
 }
 
 export interface ChatRequest {

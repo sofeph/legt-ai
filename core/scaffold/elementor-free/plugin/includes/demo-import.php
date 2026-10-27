@@ -200,33 +200,90 @@ function {{prefix}}_demo_apply_kit() {
 }
 
 /**
- * Ana menüyü oluşturur (yoksa) ve temanın "primary" konumuna atar.
+ * Örnek HTML'deki menü bağlantısını WordPress adresine çevirir: #bölüm → ana sayfa + bölüm,
+ * about.html → /about/, mutlak adresler olduğu gibi.
  */
-function {{prefix}}_demo_menu( $home_id ) {
-	$name = '{{name}}';
+function {{prefix}}_demo_link_url( $url ) {
+	$url = trim( (string) $url );
+	if ( '' === $url || '#' === $url ) {
+		return home_url( '/' );
+	}
+	if ( preg_match( '#^(https?:)?//#i', $url ) || 0 === strpos( $url, 'mailto:' ) || 0 === strpos( $url, 'tel:' ) ) {
+		return $url;
+	}
+	if ( '#' === $url[0] ) {
+		return home_url( '/' ) . $url;
+	}
+	$path = trim( preg_replace( '#\.(html?|php)$#i', '', ltrim( $url, './' ) ), '/' );
+	if ( in_array( $path, array( '', 'index', 'home' ), true ) ) {
+		return home_url( '/' );
+	}
+	return home_url( '/' . $path . '/' );
+}
+
+/**
+ * Menü oluşturur (yoksa), boşsa örnek HTML'deki bağlantılarla doldurur ve tema konumuna atar.
+ *
+ * @param string $name     Menü adı.
+ * @param string $location Tema konumu (primary | footer).
+ * @param array  $links    Örnek HTML'den çıkan bağlantılar (title, url).
+ * @param int    $home_id  Ana sayfa yazı kimliği ("primary" için bağlantı yoksa tek öğe).
+ */
+function {{prefix}}_demo_nav_menu( $name, $location, $links, $home_id = 0 ) {
 	$menu = wp_get_nav_menu_object( $name );
 	$id   = $menu ? (int) $menu->term_id : wp_create_nav_menu( $name );
 	if ( is_wp_error( $id ) ) {
 		return $id;
 	}
-	if ( ! $menu && $home_id ) {
-		wp_update_nav_menu_item(
-			$id,
-			0,
-			array(
-				'menu-item-title'     => __( 'Ana Sayfa', '{{textdomain}}' ),
-				'menu-item-object'    => 'page',
-				'menu-item-object-id' => $home_id,
-				'menu-item-type'      => 'post_type',
-				'menu-item-status'    => 'publish',
-			)
-		);
+	if ( ! wp_get_nav_menu_items( $id ) ) {
+		foreach ( (array) $links as $link ) {
+			wp_update_nav_menu_item(
+				$id,
+				0,
+				array(
+					'menu-item-title'  => sanitize_text_field( $link['title'] ),
+					'menu-item-url'    => esc_url_raw( {{prefix}}_demo_link_url( $link['url'] ) ),
+					'menu-item-type'   => 'custom',
+					'menu-item-status' => 'publish',
+				)
+			);
+		}
+		if ( ! $links && $home_id ) {
+			wp_update_nav_menu_item(
+				$id,
+				0,
+				array(
+					'menu-item-title'     => __( 'Ana Sayfa', '{{textdomain}}' ),
+					'menu-item-object'    => 'page',
+					'menu-item-object-id' => $home_id,
+					'menu-item-type'      => 'post_type',
+					'menu-item-status'    => 'publish',
+				)
+			);
+		}
 	}
-	$locations            = get_stylesheet() === '{{slug}}' ? get_theme_mod( 'nav_menu_locations', array() ) : array();
-	$locations            = is_array( $locations ) ? $locations : array();
-	$locations['primary'] = $id;
+	$locations              = get_stylesheet() === '{{slug}}' ? get_theme_mod( 'nav_menu_locations', array() ) : array();
+	$locations              = is_array( $locations ) ? $locations : array();
+	$locations[ $location ] = $id;
 	{{prefix}}_demo_set_theme_mod( 'nav_menu_locations', $locations );
 	return $id;
+}
+
+/**
+ * Ana menü (header) ve footer menüsünü örnek HTML'deki bağlantılarla kurar.
+ */
+function {{prefix}}_demo_menu( $home_id ) {
+	$file  = {{PREFIX}}_EW_PATH . 'includes/demo-content.php';
+	$data  = is_readable( $file ) ? require $file : array();
+	$menus = isset( $data['menus'] ) ? (array) $data['menus'] : array();
+	$main  = {{prefix}}_demo_nav_menu( '{{name}}', 'primary', isset( $menus['primary'] ) ? $menus['primary'] : array(), $home_id );
+	if ( is_wp_error( $main ) ) {
+		return $main;
+	}
+	if ( ! empty( $menus['footer'] ) ) {
+		{{prefix}}_demo_nav_menu( '{{name}} Footer', 'footer', $menus['footer'] );
+	}
+	return $main;
 }
 
 /**

@@ -33,6 +33,15 @@ export interface IntakeInput {
 }
 
 /** Bir site klasörünü (public_html, dist, www...) tarama sonucu */
+/** Site adresi / ekran görüntüsü girişinin sonucu */
+export interface UrlScan {
+  /** Son adres (yönlendirmeden sonra) ya da ekran görüntüsünün dosya yolu */
+  url: string
+  title: string
+  sources: IntakeSource[]
+  warnings: string[]
+}
+
 export interface FolderScan {
   root: string
   sources: IntakeSource[]
@@ -81,9 +90,16 @@ export interface DemoPost {
   category: string
 }
 
+export interface DemoLink {
+  title: string
+  url: string
+}
+
 export interface DemoContent {
   posts: DemoPost[]
   categories: string[]
+  /** Örnek HTML'deki header / footer menü bağlantıları (demo menüleri bunlarla kurulur) */
+  menus?: { primary: DemoLink[]; footer: DemoLink[] }
 }
 
 export interface PreAnalysis {
@@ -154,6 +170,11 @@ interface PlanBase {
 
 export interface ElementorPlan extends PlanBase {
   mode: 'elementor-free'
+  /**
+   * 'source': widget CSS'i LLM'siz, kaynak CSS kuralları widget kapsamına alınarak üretilir ve widget PHP'si
+   * kaynak HTML'in sınıf adlarını korur (birebir görünüm). Yoksa eski davranış: CSS'i LLM yazar.
+   */
+  cssMode?: 'source' | 'llm'
   sections: ElementorSection[]
   layout: { header: string; footer: string }
 }
@@ -175,6 +196,8 @@ export interface LLMSettings {
   model: string
   numCtx: number
   apiKey?: string
+  /** Ekran görüntüsünden HTML için görsel destekli model (Ollama / OpenAI uyumlu); boşsa seçili model ya da kurulu ilk görsel model */
+  visionModel?: string
   /** Aynı anda çalışan LLM ajanı sayısı (1-10, varsayılan 3); Ollama'da OLLAMA_NUM_PARALLEL ile birlikte etkili */
   concurrency: number
   /** Eklenti kimliği → etkin mi (yeni bulunan eklentiler kapalı başlar) */
@@ -239,7 +262,7 @@ export interface QualityItem {
 
 // ---- Canlı WordPress testi (Playwright) ----
 
-export type TestIssueKind = 'setup' | 'php' | 'http' | 'console' | 'asset' | 'render' | 'content' | 'overflow' | 'scenario' | 'editor'
+export type TestIssueKind = 'setup' | 'php' | 'http' | 'console' | 'asset' | 'render' | 'content' | 'overflow' | 'scenario' | 'editor' | 'visual'
 
 export interface TestIssue {
   kind: TestIssueKind
@@ -271,6 +294,35 @@ export interface TestRound {
   reverted: string[]
 }
 
+/** Görsel benzerlik puanı: 1500 üzerinden; 750 altı hata, 1050 altı uyarı (core/visual/score.ts) */
+export interface VisualSectionScore {
+  sectionId: string
+  label: string
+  viewport: string
+  total: number
+  pixel: number
+  layout: number
+  type: number
+  color: number
+  content: number
+  /** Kod tarafından otomatik düzeltilen özellik sayısı */
+  patched: number
+  file?: string
+}
+
+export interface VisualReport {
+  max: number
+  threshold: number
+  /** Bölümlerin kaynak yüksekliğine ve görünüm penceresine göre ağırlıklı ortalaması */
+  score: number
+  verdict: 'pass' | 'warn' | 'fail'
+  sections: VisualSectionScore[]
+  /** Referans ekran görüntüsüyle (site adresi / ekran görüntüsü girişi) tam sayfa karşılaştırma */
+  pages: { viewport: string; score: number }[]
+  /** Otomatik yazılan CSS düzeltmesi sayısı */
+  patches: number
+}
+
 export interface TestReport {
   startedAt: string
   finishedAt: string
@@ -278,6 +330,7 @@ export interface TestReport {
   wpVersion: string | null
   rounds: TestRound[]
   shots: TestShot[]
+  visual?: VisualReport
   error?: string
 }
 
@@ -290,9 +343,11 @@ export interface TestOptions {
   editor: boolean
   /** Test bitince siteyi açık tut (tarayıcıda incelemek için) */
   keepAlive: boolean
+  /** Görsel benzerlik puanı (1500 üzerinden, 750 altı hata) ve otomatik CSS düzeltmesi; varsayılan açık */
+  visual?: boolean
 }
 
-export const DEFAULT_TEST_OPTIONS: TestOptions = { rounds: 2, aiScenarios: true, editor: true, keepAlive: false }
+export const DEFAULT_TEST_OPTIONS: TestOptions = { rounds: 2, aiScenarios: true, editor: true, keepAlive: false, visual: true }
 
 export interface RuntimeStatus {
   ok: boolean

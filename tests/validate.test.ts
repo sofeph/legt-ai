@@ -135,3 +135,16 @@ describe('checkDynamicQuery', () => {
     expect(checkDynamicQuery('x-elementor-widgets/widgets/class-hero.php', 'x')).toEqual([])
   })
 })
+
+describe('checkStaticText', () => {
+  it('render() içindeki gömülü metni yakalar, kontrolden okunanı kabul eder', async () => {
+    const { checkStaticText } = await import('@core/validate/elementor')
+    const bad = "<?php\nclass W {\n\tprotected function render() {\n\t\t$s = $this->get_settings_for_display();\n\t\t?>\n\t\t<section><h2>Hakkımızda</h2><p><?php echo esc_html( $s['t'] ); ?></p></section>\n\t\t<?php\n\t}\n}"
+    const good = "<?php\nclass W {\n\tprotected function render() {\n\t\t$s = $this->get_settings_for_display();\n\t\t?>\n\t\t<section class=\"a\"><h2><?php echo esc_html( $s['title'] ); ?></h2><span>&rarr;</span></section>\n\t\t<?php\n\t}\n}"
+    expect(checkStaticText(bad)).toHaveLength(1)
+    expect(checkStaticText(bad)[0].message).toContain('Hakkımızda')
+    expect(checkStaticText(good)).toEqual([])
+    expect(checkStaticText("<?php\nclass W { protected function render() { echo '<h3>Başlık</h3>'; } }")).toHaveLength(1)
+    expect(checkStaticText("<?php\nclass W { protected function render() { printf( '<a href=\"%s\">%s</a>', $u, $t ); } }")).toEqual([])
+  })
+})

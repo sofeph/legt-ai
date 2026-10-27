@@ -32,6 +32,7 @@ export function providerInfos(): ProviderInfo[] {
       apiKey: p.apiKey ?? 'none',
       ...(p.apiKeyHint ? { apiKeyHint: p.apiKeyHint } : {}),
       ...(p.modelHint ? { modelHint: p.modelHint } : {}),
+      ...(p.vision ? { vision: true } : {}),
       remote: !!p.remote,
       pluginId: p.pluginId
     }))

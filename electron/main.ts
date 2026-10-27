@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { registerFsIpc } from './ipc/fs'
 import { registerLlmIpc } from './ipc/llm'
 import { registerOllamaIpc } from './ipc/ollama'
+import { registerCaptureIpc } from './ipc/capture'
 import { registerPackageIpc } from './ipc/package'
 import { registerValidateIpc } from './ipc/validate'
 import { registerWptestIpc, shutdownWptest } from './ipc/wptest'
@@ -60,6 +61,7 @@ app.whenReady().then(async () => {
   registerFsIpc(getWindow)
   registerLlmIpc(getWindow)
   registerOllamaIpc(getWindow)
+  registerCaptureIpc(getWindow)
   registerValidateIpc()
   registerPackageIpc(getWindow)
   registerWptestIpc(getWindow)

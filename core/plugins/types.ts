@@ -18,6 +18,8 @@ export interface ProviderDefinition {
   remote?: boolean
   /** Model alanının yanında gösterilen öneri */
   modelHint?: string
+  /** Sağlayıcının modelleri görsel girdiyi destekliyorsa true (ekran görüntüsünden tema için) */
+  vision?: boolean
   create(settings: LLMSettings): LLMProvider | Promise<LLMProvider>
 }
 
@@ -59,6 +61,7 @@ export interface ProviderInfo {
   apiKey: 'required' | 'optional' | 'none'
   apiKeyHint?: string
   modelHint?: string
+  vision?: boolean
   remote: boolean
   /** Yerleşik değilse sağlayan eklenti */
   pluginId?: string

@@ -6,6 +6,7 @@ import type { Plan, TestOptions } from '../../core/types'
 import { setPhpBinary } from '../../core/validate/php'
 import { detectRuntime, loadReport, readShot, runLiveTest, stopAllServers, type WpServer } from '../../core/wptest'
 import { binaries, runtimePaths } from '../../core/wptest/runtime'
+import { setupRuntime, type SetupProgress } from '../../core/wptest/setupRuntime'
 import type { LlmEvent } from '../api'
 import { promptsDir, runtimeDir, wptestPhpDir, wptestWorkRoot } from '../paths'
 import { loadSettings, store } from './fs'
@@ -31,6 +32,28 @@ export function registerWptestIpc(getWindow: () => BrowserWindow | null): void {
     const plan = await store().readJson<Plan>(id, 'plan.json')
     return detectRuntime(runtimeDir(), plan?.mode !== 'block-theme')
   })
+
+  // Test ortamı kurulumu (portable XAMPP + WordPress + Elementor); npm gerektirmez
+  let setupCtrl: AbortController | null = null
+  ipcMain.handle('wptest:setupRuntime', async () => {
+    if (setupCtrl) throw new Error('Kurulum zaten sürüyor')
+    const ctrl = new AbortController()
+    setupCtrl = ctrl
+    try {
+      await setupRuntime({
+        runtimeDir: runtimeDir(),
+        signal: ctrl.signal,
+        onProgress: (p: SetupProgress) => getWindow()?.webContents.send('runtime:event', p)
+      })
+      const php = binaries(runtimePaths(runtimeDir())).php
+      if (existsSync(php)) setPhpBinary(php)
+    } catch (e) {
+      throw new Error(ctrl.signal.aborted ? 'İptal edildi' : (e as Error).message)
+    } finally {
+      setupCtrl = null
+    }
+  })
+  ipcMain.handle('wptest:cancelSetup', () => setupCtrl?.abort())
 
   ipcMain.handle('wptest:report', (_e, id: string) => loadReport(store(), id))
   ipcMain.handle('wptest:shot', (_e, id: string, rel: string) => readShot(store(), id, rel))

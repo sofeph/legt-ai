@@ -127,6 +127,11 @@ describe.skipIf(!enabled)('canlı WordPress testi', () => {
         const second = report.rounds[1].issues
         expect(second.filter((i) => i.kind === 'content' && i.file === fixed && i.severity === 'error')).toEqual([])
       }
+      // Görsel benzerlik: 1500 üzerinden puan; Elementor modunda stil sapmaları LLM'siz CSS kuralına çevrilir
+      expect(report.visual, 'görsel rapor').toBeDefined()
+      expect(report.visual!.max).toBe(1500)
+      expect(report.visual!.score).toBeGreaterThan(0)
+      if (mode === 'elementor-free') expect(report.visual!.patches).toBeGreaterThan(0)
       expect(events.some((e) => e.type === 'site' && e.url?.startsWith('http://127.0.0.1:'))).toBe(true)
     }, 600000)
   }

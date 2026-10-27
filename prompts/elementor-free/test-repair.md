@@ -31,6 +31,7 @@ Onarım turu: {{attempt}}
 ## Kurallar
 - İçeriği asla koda gömerek "düzeltme": yazı/kategori/menü içeriği WordPress'ten (WP_Query, get_terms, `{{prefix}}_render_menu`) okunmaya devam etsin; yazı yoksa boş durum mesajı bas. Metin varsayılanları yalnızca Elementor kontrolünde olsun.
 - Görünüm sorunlarında kaynak HTML'e (yukarıdaki "Örnek HTML") yaklaş: sınıf adlarını, yapıyı ve CSS değerlerini değiştirerek kaynaktan uzaklaşma.
+- `[visual]` sorunlarında (görsel benzerlik puanı 1500 üzerinden, 750 altı hata): sorun ayrıntısındaki ölçüler gerçektir. "kaynakta X, üretilende Y" satırlarındaki kaynak değerini kullan; "Yerleşim" satırlarındaki sapmayı (x/y/genişlik/yükseklik) boşluk, `max-width`, `gap`, `flex`/`grid` ile kapat; "bulunmayan öğe" listesindeki içeriği ekle; fazla öğeleri kaldır. Kaynak HTML'in yapısını ve sınıflarını koru. Dosyanın sonundaki `legt:visual:start ... legt:visual:end` bloğu otomatik üretilir, DEĞİŞTİRME.
 - Yalnızca listelenen sorunları çöz; çalışan davranışı, kontrol id'lerini, sınıf ve handle adlarını DEĞİŞTİRME (diğer dosyalar bunlara bağlı).
 - Taşma sorunlarında: sabit genişlik yerine `max-width: 100%`, `flex-wrap`, `minmax(0, 1fr)`, uzun kelimeler için `overflow-wrap: anywhere`; `{{tabletBp}}px` ve `{{mobileBp}}px` medya sorgularını kullan.
 - JS sorunlarında: `elementorFrontend.hooks.addAction('frontend/element_ready/{{widgetName}}.default', ...)` içinde, kök elemana göre seç; editörde yeniden render'da da çalışsın.

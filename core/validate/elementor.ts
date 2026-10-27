@@ -104,3 +104,58 @@ export function checkDynamicQuery(path: string, content: string): ValidationIssu
     }
   ]
 }
+
+/** render() içindeki satır içi HTML ve literal HTML dizgeleri: görünen düz metin koda gömülü kalmamalı */
+export function checkStaticText(content: string): ValidationIssue[] {
+  const start = content.search(/function\s+render\s*\(/)
+  if (start < 0) return []
+  const rest = content.slice(start)
+  const endRel = rest.slice(10).search(/\n\s*(?:public|protected|private)\s+function\s/)
+  const region = endRel < 0 ? rest : rest.slice(0, endRel + 10)
+  const letters = /\p{L}{3,}/u
+  const visible = (html: string): string =>
+    html
+      .replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, ' ')
+      .replace(/<!--[\s\S]*?-->/g, ' ')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&[a-z#0-9]+;/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  const found: string[] = []
+  // 1) ?> ... <?php arası satır içi HTML: PHP blokları (öznitelik içindekiler dahil) çıkarılır, kalan metin düğümleri bakılır
+  let html = ''
+  let pos = 0
+  let inPhp = true
+  while (pos < region.length) {
+    if (inPhp) {
+      const close = region.indexOf('?>', pos)
+      if (close < 0) break
+      pos = close + 2
+      inPhp = false
+    } else {
+      const open = /<\?(?:php|=)/.exec(region.slice(pos))
+      const end = open ? pos + open.index : region.length
+      html += region.slice(pos, end) + ' \u0001 '
+      pos = open ? end + open[0].length : region.length
+      inPhp = true
+    }
+  }
+  const stripped = html.replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, ' ').replace(/<!--[\s\S]*?-->/g, ' ')
+  for (const node of stripped.split(/<[^>]*>/)) {
+    const text = visible(node.replace(/\u0001/g, ' '))
+    if (letters.test(text)) found.push(text.slice(0, 50))
+  }
+  // 2) echo / print ile basılan literal HTML (değişken, printf yer tutucusu ve çeviri çağrısı içermeyenler)
+  for (const m of region.matchAll(/\b(?:echo|print)\s+(['"])((?:\\.|(?!\1)[^\\])*)\1\s*;/g)) {
+    if (/[$%{]/.test(m[2])) continue
+    const text = visible(m[2])
+    if (letters.test(text)) found.push(text.slice(0, 50))
+  }
+  if (!found.length) return []
+  return [
+    {
+      rule: 'static-content',
+      message: `Statik metin koda gömülü: ${found.slice(0, 3).map((t) => JSON.stringify(t)).join(', ')}${found.length > 3 ? ` (+${found.length - 3})` : ''} — her görünen metin Elementor kontrolünden ($settings; varsayılanı kaynak HTML'deki metin) ya da WordPress API'sinden (WP_Query, get_bloginfo, menü...) gelmeli`
+    }
+  ]
+}

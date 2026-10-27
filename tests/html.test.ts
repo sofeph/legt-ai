@@ -90,3 +90,14 @@ describe('extractDemoContent', () => {
     expect(r.categories).toEqual(['Baskı'])
   })
 })
+
+describe('extractDemoContent menüler', () => {
+  it('header ve footer bağlantılarından menü çıkarır, düğmeleri ve tekrarları atar', async () => {
+    const { extractDemoContent } = await import('@core/html/demoContent')
+    const html = `<header><nav><ul><li><a href="#about">Hakkımızda</a></li><li><a href="services.html">Hizmetler</a></li><li><a href="#about">Hakkımızda</a></li></ul><a class="theme-btn" href="#contact">Teklif Al</a></nav></header>
+      <main></main><footer><ul><li><a href="/privacy.html">Gizlilik</a></li><li><a href="javascript:void(0)">X</a></li></ul></footer>`
+    const r = extractDemoContent([{ name: 'index.html', kind: 'html', content: html }])
+    expect(r.menus?.primary).toEqual([{ title: 'Hakkımızda', url: '#about' }, { title: 'Hizmetler', url: 'services.html' }])
+    expect(r.menus?.footer).toEqual([{ title: 'Gizlilik', url: '/privacy.html' }])
+  })
+})

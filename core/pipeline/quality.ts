@@ -90,8 +90,19 @@ export function qualityChecklist(
       (assets?.placeholders ?? []).map((p) => `${p}: kaynakta bulunamadı, yer tutucu yazıldı — gerçek görseli bu yola koyun`),
       true
     ),
-    liveTestItem(report, state)
+    liveTestItem(report, state),
+    visualItem(report)
   ]
+}
+
+/** Görsel benzerlik puanı (1500 üzerinden): 750 altı hata, 1050 altı uyarı */
+function visualItem(report: TestReport | null | undefined): QualityItem {
+  const label = 'Görsel benzerlik: örnek tasarıma yakın (750+ / 1500)'
+  const v = report?.visual
+  if (!v) return item('visual', label, ['Ölçülmedi: canlı testi "Görsel benzerlik" açık çalıştırın'], true)
+  if (v.verdict === 'fail') return item('visual', label, [`Puan ${v.score}/${v.max}: ${v.threshold} eşiğinin altında`, ...v.sections.filter((s) => s.total < v.threshold).map((s) => `${s.label} (${s.viewport}): ${s.total}/${v.max}`)])
+  if (v.verdict === 'warn') return item('visual', label, [`Puan ${v.score}/${v.max}: eşik geçildi, hedef 1050+`], true)
+  return item('visual', label, [])
 }
 
 /** Son canlı WordPress testi (Playwright); hiç çalışmadıysa ya da sonra dosya değiştiyse uyarı */

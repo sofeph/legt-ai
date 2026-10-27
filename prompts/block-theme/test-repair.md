@@ -28,6 +28,7 @@ Onarım turu: {{attempt}}
 
 ## Kurallar
 - İçeriği elle yazarak "düzeltme": yazı, kategori ve menüler `core/query`, `core/categories`, `core/navigation` gibi dinamik bloklarla kalsın. Görünüm sorunlarında kaynak HTML'e yaklaş, ondan uzaklaşma.
+- `[visual]` sorunlarında (görsel benzerlik puanı 1500 üzerinden, 750 altı hata): sorun ayrıntısındaki ölçüler gerçektir. "kaynakta X, üretilende Y" satırlarındaki kaynak değerini kullan; "Yerleşim" satırlarındaki sapmayı (x/y/genişlik/yükseklik) boşluk, `max-width`, `gap`, `flex`/`grid` ile kapat; "bulunmayan öğe" listesindeki içeriği ekle; fazla öğeleri kaldır. Kaynak HTML'in yapısını ve sınıflarını koru. Blok işaretlemesindeki `style`/preset değerlerini kaynak ölçülere göre düzelt.
 - Yalnızca listelenen sorunları çöz; pattern slug'ını, `className`'leri ve preset slug'larını DEĞİŞTİRME (diğer dosyalar bunlara bağlı).
 - Blok işaretlemesi geçerli kalmalı: her `<!-- wp:x {...} -->` JSON'u geçerli, her blok kapanıyor, ham hex renk yok.
 - Taşma sorunlarında: sabit genişlik yerine `max-width: 100%`, `flex-wrap`, `minmax(0, 1fr)`; `{{tabletBp}}px` ve `{{mobileBp}}px` medya sorgularını kullan.

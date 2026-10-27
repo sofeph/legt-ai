@@ -1,9 +1,11 @@
 import { readFile } from 'node:fs/promises'
 import { clipText, collectCss, compactHtml, relevantCss } from '../html/relevantCss'
 import { TEMPERATURE, type ChatMessage, type LLMProvider } from '../llm/provider'
+import { isFatalError, withRetry } from '../llm/retry'
 import type { ProjectStore } from '../project/store'
 import { loadPrompt, pascalPrefix, renderTemplate, selectKindRules, widgetClassName } from '../prompts/render'
 import { renderScaffold } from '../scaffold'
+import { buildWidgetCss } from './widgetCss'
 import type { BlockSection, ElementorSection, FileKind, FileStatus, GenEvent, IntakeInput, Plan, PlanFile, PreAnalysis, ProjectState, ValidationIssue } from '../types'
 import { formatIssues, validateFile } from '../validate'
 import { autoFix } from '../validate/autofix'
@@ -46,6 +48,8 @@ export interface GenContext {
 
 type AnySection = ElementorSection | BlockSection
 
+export { isFatalError, isTransientError } from '../llm/retry'
+
 export class CancelledError extends Error {
   constructor() {
     super('İptal edildi')
@@ -77,6 +81,15 @@ function sectionSummaries(plan: Plan): object[] {
 }
 
 /** Bir dosyanın file.md yer tutucuları */
+/** Widget PHP'sine verilen sınıf kuralı: 'source' modunda kaynak sınıfları korunur (CSS kaynaktan üretilir) */
+function classRule(plan: Plan, prefix: string, widget: string): string {
+  if (plan.mode === 'elementor-free' && plan.cssMode === 'source') {
+    const root = prefix + '-' + (widget || 'widget').replace(new RegExp('^' + prefix + '-'), '')
+    return "kaynak HTML'in sınıf adlarını AYNEN koru (yeniden adlandırma ve önek ekleme YOK; widget CSS'i kaynaktan otomatik üretilir, sen yazmazsın) ve kök öğeye ek olarak " + '`' + root + '`' + ' sınıfını ver'
+  }
+  return 'sınıfları ' + '`' + prefix + '-' + '`' + ' önekiyle yeniden adlandır'
+}
+
 export async function buildFileVars(ctx: GenContext, file: PlanFile, kind: FileKind): Promise<Record<string, unknown>> {
   const { plan } = ctx
   const { name, slug, prefix, textdomain, language } = plan.theme
@@ -153,7 +166,8 @@ export async function buildFileVars(ctx: GenContext, file: PlanFile, kind: FileK
     widgetName: widget || '(yok)',
     WidgetClass: widget ? widgetClassName(widget, prefix) : '(yok)',
     tabletBp: String(bp.tablet ?? 1024),
-    mobileBp: String(bp.mobile ?? 767)
+    mobileBp: String(bp.mobile ?? 767),
+    classRule: classRule(plan, prefix, widget)
   }
 }
 
@@ -243,6 +257,15 @@ export async function generate(opts: GenerateOptions): Promise<ProjectState> {
 
   // ---- Scaffold (LLM yok) ----
   const scaffold = await renderScaffold(opts.scaffoldDir, plan, ctx.pre)
+  // Widget CSS'i (cssMode: 'source'): kaynak CSS kuralları widget kapsamına alınır, LLM çağrısı yok
+  if (plan.mode === 'elementor-free' && plan.cssMode === 'source') {
+    for (const f of plan.files) {
+      if (f.kind !== 'widget-css' || f.source !== 'scaffold' || !f.sectionId) continue
+      const section = sectionOf(plan, f.sectionId)
+      if (!section || !('widget' in section)) continue
+      scaffold.set(f.path, buildWidgetCss(ctx.css, preSection(ctx.pre, section.htmlRef)?.html ?? '', section.widget))
+    }
+  }
   // Eski planlarda LLM'e verilmiş ama artık şablonu olan dosyalar (header/footer, demo JSON) şablondan
   // üretilir: daha az LLM çağrısı, wp_head/wp_footer'ı unutan ya da boş demo üreten modele bağımlılık yok
   const promoted = plan.files.filter((f) => f.source === 'llm' && scaffold.has(f.path))
@@ -303,12 +326,20 @@ export async function generate(opts: GenerateOptions): Promise<ProjectState> {
       let response = ''
       let error: string | undefined
       try {
-        response = await provider.chat({
-          messages,
-          temperature: TEMPERATURE.code,
-          signal: opts.signal,
-          onToken: (chunk) => opts.onEvent?.({ type: 'token', path: f.path, chunk })
-        })
+        // Geçici sağlayıcı hatasında (zaman aşımı, 429, 5xx) bekleyip aynı isteği yeniden dene
+        response = await withRetry(
+          () =>
+            provider.chat({
+              messages,
+              temperature: TEMPERATURE.code,
+              signal: opts.signal,
+              onToken: (chunk) => opts.onEvent?.({ type: 'token', path: f.path, chunk })
+            }),
+          opts.signal,
+          (message, wait) => {
+            error = `yeniden deneniyor (${message}); ${wait / 1000} sn bekleniyor`
+          }
+        )
         return response
       } catch (e) {
         error = (e as Error).message
@@ -356,7 +387,9 @@ export async function generate(opts: GenerateOptions): Promise<ProjectState> {
         throw new CancelledError()
       }
       await setStatus(f.path, 'failed', attempts, `${f.path}: LLM çağrısı başarısız: ${(e as Error).message}`)
-      throw e
+      // Kimlik hatası dışında tek dosyanın başarısızlığı diğer dosyaları durdurmaz; başarısız dosya sonradan yeniden üretilebilir
+      if (isFatalError(e)) throw e
+      return
     }
 
     if (content !== null) await store.writeText(id, `output/${f.path}`, content)

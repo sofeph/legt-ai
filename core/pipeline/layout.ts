@@ -100,7 +100,9 @@ export function buildFiles(plan: Plan, pre: PreAnalysis, scaffoldPaths: string[]
       const php = `${P}/widgets/class-${n}.php`
       const css = `${P}/assets/css/${n}.css`
       llm(php, 'widget-php', s.id)
-      llm(css, 'widget-css', s.id, [php])
+      // cssMode 'source': widget CSS'i kaynak kurallardan LLM'siz üretilir (core/pipeline/widgetCss.ts)
+      if (plan.cssMode === 'source') files.push({ path: css, source: 'scaffold', kind: 'widget-css', sectionId: s.id })
+      else llm(css, 'widget-css', s.id, [php])
       if (s.js && s.js !== 'none') llm(`${P}/assets/js/${n}.js`, 'widget-js', s.id, [php, css])
     }
     // header.php / footer.php ve demo/*.json tasarımdan bağımsız: scaffold üretir (LLM'e gitmez).

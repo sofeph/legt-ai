@@ -2,7 +2,7 @@ import { Script } from 'node:vm'
 import type { Mode, ValidationIssue } from '../types'
 import { checkBlockMarkup, checkNoPhp, checkPatternHeader, checkRawHex } from './blocks'
 import { checkBracketBalance, checkForbidden } from './common'
-import { checkDynamicMenu, checkDynamicQuery, checkElementorApi, checkGlobalConstants } from './elementor'
+import { checkDynamicMenu, checkDynamicQuery, checkElementorApi, checkGlobalConstants, checkStaticText } from './elementor'
 import { checkUndefinedFunctions } from './functions'
 import { checkNamespaceFirst, checkPhpLight, checkPhpPrefix, checkPhpSyntax, phpLint } from './php'
 
@@ -58,7 +58,7 @@ export async function validateFile(path: string, content: string, ctx: ValidateC
       // php -l varsa bunu zaten yakalar; çift raporlanmasın
       if (!lint?.some((i) => /namespace/i.test(i.message))) issues.push(...checkNamespaceFirst(content))
       issues.push(...checkPhpPrefix(content, ctx.prefix))
-      if (isWidget) issues.push(...checkElementorApi(content), ...checkGlobalConstants(content), ...checkDynamicMenu(p, content), ...checkDynamicQuery(p, content))
+      if (isWidget) issues.push(...checkElementorApi(content), ...checkGlobalConstants(content), ...checkDynamicMenu(p, content), ...checkDynamicQuery(p, content), ...checkStaticText(content))
       if (ctx.projectFunctions) issues.push(...checkUndefinedFunctions(content, ctx.projectFunctions))
       if (isPattern) {
         issues.push(...checkPatternHeader(content, ctx.slug), ...checkBlockMarkup(content), ...checkRawHex(content))

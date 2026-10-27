@@ -11,10 +11,12 @@ import { buildFileVars, loadContext, validateAll, type GenContext } from '../pip
 import { inferKind, kebab, pluginDir, preSection, sectionRole, themeDir } from '../pipeline/layout'
 import type { ProjectStore } from '../project/store'
 import { loadPrompt, renderTemplate } from '../prompts/render'
-import type { FileKind, PlanFile, TestEvent, TestIssue, TestOptions, TestReport, TestRound, TestShot } from '../types'
+import type { FileKind, PlanFile, TestEvent, TestIssue, TestOptions, TestReport, TestRound, TestShot, VisualReport } from '../types'
 import { formatIssues } from '../validate'
 import { Attributor, dedupeIssues, phpIssues } from './attribute'
 import { openBrowser, runChecks, runScenarios, type Probe, type SitePages, type Viewports } from './browser'
+import { applyBlock, measureVisual, mergeRules, renderBlock, rulesFrom, summarize, visualIssues, type CssRule, type SourceCache, type VisualTarget } from './visual'
+import { safeSourceName } from '../html/siteFolder'
 import { detectRuntime, runtimePaths, WpServer, wpConfig } from './runtime'
 import { parseScenarios, type Scenario } from './scenarios'
 import { clampConcurrency, runPool } from '../pool'
@@ -153,12 +155,13 @@ export async function runLiveTest(opts: LiveTestOptions): Promise<LiveTestResult
   const startedAt = new Date().toISOString()
   const rounds: TestRound[] = []
   let shots: TestShot[] = []
+  let lastVisual: VisualReport | undefined
   let wpVersion: string | null = null
   let server: WpServer | null = null
   let browser: Browser | null = null
 
   const finish = async (status: TestReport['status'], error?: string): Promise<TestReport> => {
-    const report: TestReport = { startedAt, finishedAt: new Date().toISOString(), status, wpVersion, rounds, shots, ...(error ? { error } : {}) }
+    const report: TestReport = { startedAt, finishedAt: new Date().toISOString(), status, wpVersion, rounds, shots, ...(lastVisual ? { visual: lastVisual } : {}), ...(error ? { error } : {}) }
     await store.writeJson(id, 'test/report.json', report)
     return report
   }
@@ -194,10 +197,51 @@ export async function runLiveTest(opts: LiveTestOptions): Promise<LiveTestResult
     )
     let scenarios: Scenario[] | null = null
 
+    // ---- Görsel birebirlik (puan + otomatik CSS düzeltmesi) ----
+    const targets: VisualTarget[] = []
+    for (const probe of probes) {
+      const planSection = plan.sections.find((s) => s.id === probe.sectionId)
+      const section = planSection ? preSection(ctx.pre, planSection.htmlRef) : undefined
+      if (!section) continue
+      targets.push({
+        probe,
+        section,
+        ...(elementor && probe.files.css ? { patchRoot: `.elementor-widget-${probe.label}`, cssFile: probe.files.css } : {})
+      })
+    }
+    // Kaynaklar diskte yoksa (eski projeler) test/src/ altına yazılır; göreli CSS / görsel bağlantıları korunur
+    for (const s of ctx.intake.sources) {
+      if (s.kind === 'media') continue
+      if (!existsSync(store.safePath(id, `sources/${safeSourceName(s.name)}`))) await store.writeText(id, `test/src/${safeSourceName(s.name)}`, s.content)
+    }
+    const sourcePages = ctx.intake.sources
+      .filter((s) => s.kind === 'html')
+      .map((s) => {
+        const own = store.safePath(id, `sources/${safeSourceName(s.name)}`)
+        return { name: s.name, abs: existsSync(own) ? own : store.safePath(id, `test/src/${safeSourceName(s.name)}`) }
+      })
+    const refDir = store.safePath(id, 'sources/_ref')
+    const srcCache: SourceCache = new Map()
+    const rulesFile = 'test/visual-rules.json'
+    const ruleStore = new Map<string, CssRule[]>(Object.entries((await store.readJson<Record<string, CssRule[]>>(id, rulesFile)) ?? {}))
+    const ruleCount = (): number => [...ruleStore.values()].reduce((n, r) => n + r.length, 0)
+    /** Dosyadaki görsel düzeltme bloğunu kural listesinden yeniden yazar (onarım bloğu silmiş olabilir) */
+    const writeBlocks = async (): Promise<void> => {
+      for (const [file, rules] of ruleStore) {
+        const css = await ctx.read(file)
+        if (css === null) continue
+        const next = applyBlock(css, renderBlock(rules, viewports))
+        if (next !== css) await store.writeText(id, `output/${file}`, next)
+      }
+      await store.writeJson(id, rulesFile, Object.fromEntries(ruleStore))
+    }
+
     /** Siteyi sıfırdan kurar ve tüm kontrolleri çalıştırır */
     const evaluate = async (round: number): Promise<{ issues: TestIssue[]; snapshots: Record<string, string>; run: number; skipped: number }> => {
       const srv = server!
       emit({ type: 'phase', phase: 'install', round })
+      // Onarım görsel düzeltme bloğunu silmiş olabilir; siteye kopyalanmadan önce yeniden yazılır
+      await writeBlocks()
       await srv.syncDir(store.safePath(id, `output/${T}`), 'themes', T)
       await srv.installMuPlugin(join(opts.phpScriptsDir, 'legt-test-mu.php'))
       if (elementor) {
@@ -294,6 +338,46 @@ export async function runLiveTest(opts: LiveTestOptions): Promise<LiveTestResult
       const checks = await runChecks(browser!, input)
       shots = checks.shots
       issues.push(...checks.issues)
+
+      if (options.visual !== false && targets.length && !signal?.aborted) {
+        try {
+          emit({ type: 'phase', phase: 'browser', round, detail: 'görsel benzerlik' })
+          const mi = {
+            browser: browser!,
+            siteUrl: srv.url,
+            pages: { test: setup.pages.test!, ...(setup.pages.home ? { home: setup.pages.home } : {}), ...(setup.pages.demo ? { demo: setup.pages.demo } : {}) },
+            targets,
+            viewports,
+            sourcePages,
+            cache: srcCache,
+            ...(existsSync(refDir) ? { refDir } : {}),
+            shots: { dir: store.safePath(id, 'test/shots'), rel: 'test/shots' },
+            log,
+            signal
+          }
+          let run = await measureVisual(mi)
+          const fresh = rulesFrom(run, targets)
+          if (fresh.size) {
+            for (const [file, rules] of fresh) ruleStore.set(file, mergeRules(ruleStore.get(file) ?? [], rules))
+            await writeBlocks()
+            await srv.syncDir(store.safePath(id, `output/${P}`), 'plugins', P)
+            log(`Görsel düzeltme: ${ruleCount()} CSS kuralı yazıldı, yeniden ölçülüyor`)
+            run = await measureVisual(mi)
+          }
+          const report = summarize(run, targets, srcCache, ruleCount())
+          if (report) {
+            lastVisual = report
+            shots = [...shots, ...run.shots]
+            issues.push(...visualIssues(run, report, targets))
+            log(`Görsel benzerlik: ${report.score}/${report.max} (${report.verdict === 'fail' ? 'eşik altı' : report.verdict === 'warn' ? 'orta' : 'iyi'})`)
+          } else {
+            log('Görsel benzerlik: kaynak sayfada bölümler bulunamadığı için puanlanmadı')
+          }
+        } catch (e) {
+          if (signal?.aborted) throw e
+          log(`Görsel benzerlik ölçülemedi: ${(e as Error).message.split('\n')[0]}`)
+        }
+      }
 
       let sc = { run: 0, skipped: 0 }
       if (options.aiScenarios && provider) {

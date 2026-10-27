@@ -87,6 +87,16 @@ function AgentLog({ path, phase, log }: { path: string; phase: string; log: stri
   )
 }
 
+/** 95000 ms → "1 dk 35 sn"; saat varsa "1 sa 05 dk" */
+export function formatDuration(ms: number): string {
+  const s = Math.max(0, Math.round(ms / 1000))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  if (h) return `${h} sa ${String(m).padStart(2, '0')} dk`
+  if (m) return `${m} dk ${String(s % 60).padStart(2, '0')} sn`
+  return `${s} sn`
+}
+
 export default function Generate(): JSX.Element {
   const { current, setState, reload, refreshProjects, setPage } = useProject()
   const id = current!.id
@@ -136,7 +146,38 @@ export default function Generate(): JSX.Element {
     return c
   }, [files, state])
 
+  // Tahmini bitiş süresi: bu çalıştırmada biten LLM dosyalarının hızından
+  const llmPaths = useMemo(() => new Set(files.filter((f) => f.source === 'llm').map((f) => f.path)), [files])
+  const runInfo = useRef<{ start: number; done: number[] }>({ start: 0, done: [] })
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    if (!running) return
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [running])
+  useEffect(
+    () =>
+      window.legt.llm.onEvent((e) => {
+        if (e.projectId !== id || e.type !== 'gen' || e.event.type !== 'file') return
+        if ((e.event.status === 'ok' || e.event.status === 'failed') && llmPaths.has(e.event.path)) runInfo.current.done.push(Date.now())
+      }),
+    [id, llmPaths]
+  )
+  const llmLeft = files.filter((f) => f.source === 'llm' && !['ok', 'failed'].includes(state.files[f.path]?.status ?? 'pending')).length
+  const eta = useMemo(() => {
+    const { start, done } = runInfo.current
+    if (!running || !start || done.length < 2) return null
+    // Genel hız ile son 6 dosyanın hızının ortalaması: dalga biçimli bağımlılıklara uyum sağlar
+    const overall = done.length / Math.max(1, now - start)
+    const recent = done.slice(-6)
+    const recentRate = (recent.length - 1) / Math.max(1, recent[recent.length - 1] - recent[0])
+    const rate = recentRate > 0 ? (overall + recentRate) / 2 : overall
+    return llmLeft > 0 ? Math.round(llmLeft / rate) : 0
+  }, [running, now, llmLeft])
+
   const run = async (only?: string[]): Promise<void> => {
+    runInfo.current = { start: Date.now(), done: [] }
+    setNow(Date.now())
     setRunning(true)
     setNotice(null)
     setAgents({})
@@ -208,6 +249,8 @@ export default function Generate(): JSX.Element {
         <ProgressBar className="flex-1" value={(counts.ok + counts.failed) / total} color={counts.failed ? 'warning' : 'brand'} thickness="large" />
         <Caption1>
           {counts.ok} tamam · {counts.failed} hatalı · {counts.pending} bekliyor
+          {running && ` · geçen ${formatDuration(now - runInfo.current.start)}`}
+          {running && (eta === null ? ' · tahmini bitiş hesaplanıyor…' : eta === 0 ? ' · bitmek üzere' : ` · tahmini bitiş ~${formatDuration(eta)} (${new Date(now + eta).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })})`)}
         </Caption1>
       </div>
 

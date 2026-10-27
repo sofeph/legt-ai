@@ -119,6 +119,47 @@ describe('generate', () => {
   const run = (id: string, provider: LLMProvider, extra: Partial<Parameters<typeof generate>[0]> = {}) =>
     generate({ provider, promptsDir, scaffoldDir, store, projectId: id, numCtx: 8192, usePhpLint: false, ...extra })
 
+  it('tek dosyanın LLM hatası diğer dosyaları durdurmaz; geçici hata yeniden denenir', async () => {
+    const plan = await elementorPlan()
+    const id = await setup(plan)
+    const p = fakeProvider((_u, path, n) => {
+      if (path.endsWith('assets/css/hero.css')) throw new Error('Model çöktü')
+      if (path.endsWith('widgets/class-hero.php') && n === 1) throw new Error('HTTP 503 Service Unavailable')
+      return undefined
+    })
+    const state = await run(id, p)
+    const bad = Object.entries(state.files).filter(([, f]) => f.status !== 'ok').map(([k]) => k)
+    expect(bad).toEqual(['turkuaz-elementor-widgets/assets/css/hero.css'])
+    expect(state.files['turkuaz-elementor-widgets/widgets/class-hero.php'].status).toBe('ok')
+    expect(state.step).toBe('done')
+  }, 30000)
+
+  it('cssMode source: CSS dosyaları LLM’e gitmez, şablondan yazılır', async () => {
+    const plan = await elementorPlan()
+    plan.cssMode = 'source'
+    for (const f of plan.files) if (f.kind === 'widget-css') Object.assign(f, { source: 'scaffold', dependsOn: [] })
+    const id = await setup(plan)
+    const p = fakeProvider()
+    const state = await run(id, p)
+    const css = plan.files.filter((f) => f.kind === 'widget-css')
+    expect(css.length).toBeGreaterThan(0)
+    for (const f of css) {
+      expect(state.files[f.path].status).toBe('ok')
+      expect(p.calls.some((c) => c.messages[1].content.includes('`' + f.path + '`'))).toBe(false)
+    }
+    const hero = await readFile(join(dir, id, 'output/turkuaz-elementor-widgets/assets/css/hero.css'), 'utf8')
+    expect(hero).toContain('.elementor-widget-trk-hero')
+  })
+
+  it('hata sınıflandırması', async () => {
+    const { isFatalError, isTransientError } = await import('@core/pipeline/generate')
+    expect(isTransientError(new Error('Zaman aşımı: kaynak yanıt vermiyor'))).toBe(true)
+    expect(isTransientError(new Error('HTTP 429 rate limit'))).toBe(true)
+    expect(isTransientError(new Error('Plan geçersiz'))).toBe(false)
+    expect(isFatalError(new Error('HTTP 401 Unauthorized'))).toBe(true)
+    expect(isFatalError(new Error('HTTP 5000 iç hata'))).toBe(false)
+  })
+
   it('Elementor: tüm dosyaları üretir, doğrular, imzaları bağımlılara iletir', async () => {
     const plan = await elementorPlan()
     const id = await setup(plan)
@@ -235,5 +276,22 @@ describe('generate', () => {
     expect(state.files['turkuaz-elementor-widgets/widgets/class-features.php'].status).toBe('pending')
     expect(state.files['turkuaz-elementor-widgets/widgets/class-hero.php'].status).toBe('ok')
     expect(state.step).toBe('generating')
+  })
+})
+
+describe('widget CSS (cssMode: source)', () => {
+  it('kaynak kurallar widget kapsamına alınır; body/:root dışarıda kalır, keyframes taşınır', async () => {
+    const { buildWidgetCss, scopeSelector } = await import('@core/pipeline/widgetCss')
+    const css = ':root{--c:red} body{margin:0} .hero{padding:40px;animation:fade 1s} .hero h1,.hero .sub{color:var(--c)} @media (max-width:767px){.hero{padding:10px}} @keyframes fade{from{opacity:0}to{opacity:1}} .other{color:blue}'
+    const out = buildWidgetCss(css, '<section class="hero"><h1>Merhaba</h1><p class="sub">x</p></section>', 'trk-hero')
+    expect(out).toContain('.elementor-widget-trk-hero .hero { padding:40px;animation:fade 1s }')
+    expect(out).toContain('.elementor-widget-trk-hero .hero h1, .elementor-widget-trk-hero .hero .sub')
+    expect(out).toContain('@media (max-width:767px) {')
+    expect(out).toContain('@keyframes fade')
+    expect(out).not.toContain('.other')
+    expect(out).not.toContain('body')
+    expect(out).not.toContain(':root')
+    expect(scopeSelector('body.dark .hero', '.w')).toBe('.w .hero')
+    expect(scopeSelector('> .x', '.w')).toBeNull()
   })
 })

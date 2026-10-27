@@ -56,7 +56,11 @@ legt-ai/
 │   ├── llm/
 │   │   ├── ollama.ts           # /api/chat, num_ctx, stream
 │   │   └── openaiCompat.ts     # /v1/chat/completions
+│   ├── visual/
+│   │   └── score.ts            # Görsel benzerlik puanı (1500; piksel/yerleşim/tipografi/renk/içerik), saf hesap
 │   ├── html/
+│   │   ├── siteUrl.ts          # Site adresi → render edilmiş HTML + CSS + görsel + referans ekran görüntüleri
+│   │   ├── demoContent.ts      # Örnek HTML'deki yazı kartlarından demo yazı/kategori
 │   │   ├── siteFolder.ts       # public_html vb. klasörden HTML/CSS/JS toplar
 │   │   ├── splitSections.ts    # HTML'i bölümlere ayırır (çok sayfalı girdide tekrarları tekilleştirir)
 │   │   └── extractTokens.ts    # Renk, font, boşluk, breakpoint çıkarır (LLM'siz ön analiz)
@@ -73,6 +77,7 @@ legt-ai/
 │       ├── ports.ts            # rastgele boş port (20000-60999)
 │       ├── runtime.ts          # XAMPP algılama, php.ini/httpd.conf/wp-config üretimi, Apache+MariaDB süreçleri
 │       ├── browser.ts          # Playwright kontrolleri, Elementor editörü, senaryo yürütücü
+│       ├── visual.ts           # Kaynak ve üretilen sayfa ölçümü, puan, otomatik CSS düzeltme bloğu (legt:visual)
 │       ├── scenarios.ts        # LLM senaryo JSON dili (kod değil) + doğrulama
 │       ├── attribute.ts        # PHP log / URL / yığın izi → üretilen dosya
 │       ├── index.ts            # turlar: kur → test → LLM onarımı → tekrar test, gerilemede geri alma
@@ -148,6 +153,7 @@ Her dosya üretildikten hemen sonra:
 * Önek kontrolü: global fonksiyon ve class'lar önekle başlıyor mu
 * `namespace` dosyanın ilk ifadesi mi (`php -l` yoksa da; ABSPATH kontrolü namespace'ten sonra gelir)
 * Elementor widget'larında `$this->x()` / `parent::x()` ya dosyada tanımlı ya da Elementor `Widget_Base` hiyerarşisinde var mı (`core/validate/elementor-widget-api.json`, `node scripts/gen-elementor-api.mjs` ile kurulu Elementor'dan üretilir). Uydurma metot WordPress'te ölümcül hata verip sayfadaki bütün widget'ları düşürür.
+* **Dinamik içerik / statik veri yasağı (`core/validate/elementor.ts`):** `render()` içinde gömülü düz metin (`<h2>Başlık</h2>`, `echo '<p>…</p>'`) hata; header/navbar/footer menüsü `{prefix}_render_menu` ile WordPress menüsünden, yazı/arşiv/ilgili yazı listeleri `WP_Query`/`get_terms` ile okunmalı; uydurma `Global_*` sabitleri yakalanır (ve kodla düzeltilir).
 * Tanımsız global fonksiyon (`core/validate/functions.ts`): LLM dosyalarında yalnızca `<?php ?>` blokları (heredoc, dizge, yorum, satır içi JS/CSS hariç) taranır; PHP + WordPress çekirdeği + Elementor'da (`php-functions.json`, `node scripts/gen-php-functions.mjs`), projenin global fonksiyonlarında yoksa ve `function_exists()` ile korunmuyorsa hata. Sınıf metotları global sayılmaz.
 * **Önce kodla düzelt (`core/validate/autofix.ts`):** namespace içinde niteliksiz `WP_Query` / `Exception` / `use` edilmemiş Elementor sınıfları tam adla yazılır; ayrıca aşağıdakiler.
 * **Görseller (`core/pipeline/assets.ts`, üretim sonunda, LLM yok):** kodun başvurduğu `assets/img/...` dosyaları proje kaynaklarından kopyalanır, yoksa doğrulanmış yer tutucu (SVG/PNG/JPEG/WebP/GIF) yazılır ve Export'ta uyarılır; site klasöründen gelen diğer medya `tema/assets/media/` altına paketlenir.
@@ -162,11 +168,12 @@ Her dosya üretildikten hemen sonra:
 
 ### ADIM 6b — Canlı test (son kontrol)
 Statik doğrulama kodun *derlendiğini*, canlı test *çalıştığını* gösterir. `core/wptest/`:
-* **Ortam:** `runtime/` altındaki portable XAMPP (`npm run setup:runtime` indirir). Her test rastgele iki portla (HTTP, MariaDB), şablondan kopyalanan temiz bir veri klasörüyle ve kendi `php.ini`/`httpd.conf`'uyla başlar. Site geçici klasörde kurulur (senkron klasörlere binlerce dosya yazılmaz). Çevrim dışı: `WP_HTTP_BLOCK_EXTERNAL`, tarayıcıda dış istekler engellenir.
+* **Ortam:** `runtime/` altındaki portable XAMPP (Test ekranındaki "Test ortamını kur" düğmesi ya da `npm run setup:runtime` indirir; `core/wptest/setupRuntime.ts`). Her test rastgele iki portla (HTTP, MariaDB), şablondan kopyalanan temiz bir veri klasörüyle ve kendi `php.ini`/`httpd.conf`'uyla başlar. Site geçici klasörde kurulur (senkron klasörlere binlerce dosya yazılmaz). Çevrim dışı: `WP_HTTP_BLOCK_EXTERNAL`, tarayıcıda dış istekler engellenir.
 * **Kurulum:** `php/setup.php` WP-CLI'siz kurar; Elementor modunda içerik widget'ları test sayfasına, header/footer widget'ları `{prefix}_layout` kayıtlarına konur ve Customizer'da seçilir. Block modda her pattern işaretli bir `core/group` içinde test sayfasına konur.
 * **Playwright (deterministik):** HTTP durumu, PHP hataları (`debug.log`), JS/konsol hataları, 404 dosyalar, bölüm render edildi mi / boş mu, örnek HTML başlıkları görünüyor mu, tablet/mobilde yatay taşma, `wp_head`/`wp_body_open`/`wp_footer` çağrısı, Elementor editör önizlemesi.
 * **Seçili LLM:** JS davranışı olan bölümler için `test-plan.md` ile senaryo yazar. Model kod değil, `scenarios.ts`'teki küçük JSON dilini üretir; seçicisi DOM'da olmayan senaryo atlanır (onarım tetiklemez).
 * **Onarım:** Sorunlar `attribute.ts` ile dosyalara bağlanır (log yolu, URL, yığın izi, bölüm kimliği). Hatası olan her LLM dosyası `test-repair.md` ile onarılır, statik doğrulamadan geçmezse yazılmaz. Site yeniden kurulup test tekrarlanır (`rounds`, varsayılan 2). Bir onarım hata sayısını artırırsa yedekten geri alınır. Scaffold dosyalarına bağlanan sorunlar yalnızca raporlanır.
+* **Görsel benzerlik (`visual.ts`, `core/visual/score.ts`):** kaynak sayfa `file://` ile, üretilen site test sayfasında aynı pencerelerde ölçülür (öğe kutuları, tipografi, renk + öğe ekran görüntüsü piksel farkı). 1500 puan: piksel 500, yerleşim 400, tipografi 250, renk 200, içerik 150; bölüm puanı pencere ağırlıklı (masaüstü .5, tablet .2, mobil .3), site puanı kaynak yüksekliğine göre. **750 altı hata**, 1050 altı uyarı; hatalar `kind: 'visual'` ile bölüm dosyasına bağlanır, ölçüler onarım istemine girer. Elementor modunda stil sapmaları LLM'siz CSS kuralına çevrilip widget CSS'inin sonuna `legt:visual:start/end` bloğu olarak yazılır (`test/visual-rules.json`'da saklanır, her turda yeniden uygulanır). Kaynaklar `site adresi / ekran görüntüsü` girişinden geliyorsa `sources/_ref/{desktop,tablet,mobile}.png` tam sayfa referans olarak ayrıca karşılaştırılır; `_ref/` temaya paketlenmez.
 * **Çıktı:** `projects/{id}/test/report.json`, `test/shots/*.png`, `test/scenarios.json`, `test/backup/round-N/`. Export kalite listesinde "Canlı WordPress testi" maddesi olarak görünür.
 
 ### ADIM 7 — Paketleme
@@ -196,6 +203,8 @@ Yerel modellerde kaliteyi en çok artıran şey, tasarıma bağlı olmayan dosya
 LLM yalnızca tasarıma bağlı dosyaları üretir: token CSS'i / `theme.json`, widget'lar (PHP + CSS + JS), pattern'ler / template part'lar.
 
 ### Token / süre / maliyet tasarrufu
+* **Widget CSS'i LLM'siz (`plan.cssMode: 'source'`, yeni Elementor projelerinde varsayılan; `core/pipeline/widgetCss.ts`):** bölümle ilgili kaynak CSS kuralları (seçici başına tüm özellikler, `@media`, kullanılan `@keyframes`) `.elementor-widget-{ad}` kapsamına alınarak AYNEN taşınır; widget PHP'si kaynak HTML'in sınıf adlarını korur. Hem görünüm kaynakla birebir aynı olur hem de widget başına en pahalı çıktılardan biri (CSS çağrısı) kalkar. `content_template()` yazdırılmaz (editör `render()` ile sunucuda çizer): çıktı boyutu yaklaşık üçte bir azalır.
+* **Geçici sağlayıcı hataları** (zaman aşımı, 429, 5xx) 3 kez yeniden denenir (`core/llm/retry.ts`); tek dosyanın başarısızlığı diğer dosyaları durdurmaz (yalnızca 401/403 işi keser). Analizde `htmlRef` yazım hataları kodla düzeltilir (`repairRefs`).
 * Tasarımdan bağımsız her dosya scaffold'dur (LLM çağrısı yok).
 * `file.md`'nin "Dosya türüne göre gereksinimler" bölümünden yalnızca üretilen türün `### tür` alt bölümü gönderilir (`selectKindRules`).
 * System mesajı bir projedeki tüm çağrılarda **birebir aynıdır** (`system.md`'de `{{path}}` yok): Ollama önek önbelleği ve bulut sağlayıcıların istem önbelleği bundan yararlanır (sağlayıcı eklentileri system bloğunu önbelleğe işaretleyebilir).
@@ -247,7 +256,7 @@ LLM yalnızca tasarıma bağlı dosyaları üretir: token CSS'i / `theme.json`, 
 * Her çağrı `projects/{id}/log/` altına kaydedilir (prompt + yanıt), hata ayıklama için
 * Prompt dosyaları `prompts/` altında düz Markdown; uygulama `{{değişken}}` yer tutucularını doldurur. Promptlar kod içine gömülmez ki topluluk kolayca geliştirebilsin.
 * Her çağrı = `system.md` (system mesajı) + `analyze.md` / `file.md` / `repair.md` (user mesajı). Sohbet geçmişi tutulmaz, her çağrı bağımsızdır.
-* Yer tutucular: `{{name}} {{slug}} {{prefix}} {{Prefix}} {{textdomain}} {{language}} {{path}} {{fileKind}} {{tokens}} {{section}} {{sectionHtml}} {{dependencySignatures}} {{widgetName}} {{WidgetClass}} {{tabletBp}} {{mobileBp}} {{requests}} {{sections}} {{errors}} {{content}} {{attempt}}`; canlı testte ek olarak `{{renderedHtml}}` (bölümün canlı sitedeki DOM'u) ve `{{js}}` (planlanan JS davranışı). Doldurulmamış `{{...}}` kalırsa çağrı yapılmaz, hata loglanır.
+* Yer tutucular: `{{name}} {{slug}} {{prefix}} {{Prefix}} {{textdomain}} {{language}} {{path}} {{fileKind}} {{tokens}} {{section}} {{sectionHtml}} {{dependencySignatures}} {{widgetName}} {{WidgetClass}} {{tabletBp}} {{mobileBp}} {{classRule}} {{requests}} {{sections}} {{errors}} {{content}} {{attempt}}`; canlı testte ek olarak `{{renderedHtml}}` (bölümün canlı sitedeki DOM'u) ve `{{js}}` (planlanan JS davranışı). Doldurulmamış `{{...}}` kalırsa çağrı yapılmaz, hata loglanır.
 * `{{dependencySignatures}}` `core/pipeline/generate.ts` tarafından çıkarılır: PHP'den class/fonksiyon adları, CSS'ten kök sınıflar, JS'ten handle adı. Tam dosya içeriği gönderilmez.
 
 ### Eklentiler

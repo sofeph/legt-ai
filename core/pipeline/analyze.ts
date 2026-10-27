@@ -1,5 +1,6 @@
 import { summarizeForPrompt } from '../html/splitSections'
 import { TEMPERATURE, type ChatMessage, type LLMProvider } from '../llm/provider'
+import { withRetry } from '../llm/retry'
 import { loadPrompt, renderTemplate } from '../prompts/render'
 import { scaffoldPaths } from '../scaffold'
 import { buildFiles, normalizePlan } from './layout'
@@ -49,6 +50,50 @@ export function extractJson(text: string): unknown {
     if (start < 0 || end <= start) throw new Error('Yanıtta JSON nesnesi bulunamadı')
     return JSON.parse(t.slice(start, end + 1))
   }
+}
+
+/**
+ * Modeller sık sık htmlRef'e bölüm adını yazar ("hero", "footer") ya da "Section 3" biçimini kullanır.
+ * Anlamı belli olanlar yeniden istek (3+ dakika, token) harcanmadan kodla düzeltilir:
+ * 1) section-N biçimi, 2) ad / sınıf / başlık eşleşmesi, 3) bölüm sayısı eşitse sıra.
+ * @returns düzeltilen htmlRef sayısı
+ */
+export function repairRefs(raw: unknown, pre: PreAnalysis): number {
+  const p = raw as { sections?: { id?: string; htmlRef?: string; widget?: string; slug?: string }[] }
+  if (!p || !Array.isArray(p.sections)) return 0
+  const valid = new Set(pre.sections.map((s) => s.id))
+  const norm = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+  let fixed = 0
+  const equalCount = p.sections.length === pre.sections.length
+  p.sections.forEach((s, i) => {
+    if (!s || (s.htmlRef && valid.has(s.htmlRef))) return
+    let target: string | undefined
+    const num = /(d+)s*$/.exec(String(s.htmlRef ?? ''))
+    if (num && valid.has(`section-${num[1]}`) && /sec/i.test(String(s.htmlRef))) target = `section-${num[1]}`
+    if (!target) {
+      const keys = [s.htmlRef, s.id, s.widget?.replace(/^[a-z0-9_]+-/, ''), s.slug?.split('/').pop()].filter((k): k is string => !!k).map(norm).filter(Boolean)
+      let best = 0
+      for (const sec of pre.sections) {
+        const hay = norm([sec.role, sec.tag, ...sec.classes, ...sec.headings.slice(0, 2)].join(' '))
+        const words = new Set(hay.split(' '))
+        let score = 0
+        for (const k of keys) {
+          if (words.has(k)) score += 2
+          else if (k.length >= 3 && hay.includes(k)) score += 1
+        }
+        if (score > best) {
+          best = score
+          target = sec.id
+        }
+      }
+    }
+    if (!target && equalCount) target = pre.sections[i].id
+    if (target) {
+      s.htmlRef = target
+      fixed++
+    }
+  })
+  return fixed
 }
 
 /** plan.json yapısal kontrolü; boş liste = geçerli */
@@ -113,16 +158,15 @@ export async function analyze(opts: AnalyzeOptions): Promise<Plan> {
           }
     ]
     opts.onAttempt?.(attempt, errors)
-    lastResponse = await opts.provider.chat({
-      messages,
-      temperature: TEMPERATURE.analyze,
-      json: true,
-      signal: opts.signal,
-      onToken: opts.onToken
-    })
+    // Geçici sağlayıcı hatasında (zaman aşımı, 429, 5xx) plan çağrısı yeniden denenir
+    lastResponse = await withRetry(
+      () => opts.provider.chat({ messages, temperature: TEMPERATURE.analyze, json: true, signal: opts.signal, onToken: opts.onToken }),
+      opts.signal
+    )
     let parsed: unknown
     try {
       parsed = extractJson(lastResponse)
+      repairRefs(parsed, opts.pre)
       errors = validatePlan(parsed, opts.input, opts.pre)
     } catch (e) {
       errors = [`JSON ayrıştırılamadı: ${(e as Error).message}`]
@@ -137,6 +181,8 @@ export async function analyze(opts: AnalyzeOptions): Promise<Plan> {
       const plan = parsed as Plan
       plan.theme = { ...opts.input.theme } // kimlik her zaman kullanıcının girdiğidir
       normalizePlan(plan)
+      // Elementor: widget CSS'i kaynaktan LLM'siz ve birebir üretilir (yeni projeler)
+      if (plan.mode === 'elementor-free') plan.cssMode = 'source'
       // Dosya listesi deterministik: LLM'in önerisi yerine plan bölümlerinden üretilir
       plan.files = buildFiles(plan, opts.pre, await scaffoldPaths(opts.scaffoldDir, plan, opts.pre))
       return plan

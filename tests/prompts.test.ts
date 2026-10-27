@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { pascalPrefix, renderTemplate, stripAuthorComments, UnfilledPlaceholderError, widgetClassName } from '@core/prompts/render'
 
 // docs/MIMARI.md'de belgelenen yer tutucular
-const DOCUMENTED = 'name slug prefix Prefix textdomain language path fileKind tokens section sectionHtml dependencySignatures widgetName WidgetClass tabletBp mobileBp requests sections errors content attempt'.split(' ')
+const DOCUMENTED = 'name slug prefix Prefix textdomain language path fileKind tokens section sectionHtml dependencySignatures widgetName WidgetClass tabletBp mobileBp classRule requests sections errors content attempt'.split(' ')
 const allVars = Object.fromEntries(DOCUMENTED.map((k) => [k, `<${k}>`]))
 
 describe('renderTemplate', () => {

@@ -17,11 +17,18 @@ import {
   Spinner,
   Subtitle2,
   Switch,
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
   Text,
   Tooltip
 } from '@fluentui/react-components'
 import {
   ArrowClockwiseRegular,
+  ArrowDownloadRegular,
   ArrowExportRegular,
   ArrowUndoRegular,
   CheckmarkCircleFilled,
@@ -65,7 +72,8 @@ const KIND: Record<TestIssue['kind'], string> = {
   content: 'içerik',
   overflow: 'taşma',
   scenario: 'senaryo',
-  editor: 'editör'
+  editor: 'editör',
+  visual: 'görsel'
 }
 
 const clean = (e: unknown): string => (e as Error).message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
@@ -184,6 +192,22 @@ export default function Test(): JSX.Element {
     setRuntime(await window.legt.wptest.status(id))
   }, [id])
 
+  const [setup, setSetup] = useState<{ message: string; percent: number | null } | null>(null)
+  const installRuntime = async (): Promise<void> => {
+    setError(null)
+    setSetup({ message: 'Başlıyor…', percent: null })
+    const off = window.legt.wptest.onSetupEvent((e) => setSetup({ message: e.message, percent: e.percent }))
+    try {
+      await window.legt.wptest.setupRuntime()
+    } catch (e) {
+      setError(clean(e))
+    } finally {
+      off()
+      setSetup(null)
+      await checkRuntime()
+    }
+  }
+
   useEffect(() => {
     void checkRuntime()
     void window.legt.wptest.report(id).then(setReport)
@@ -279,6 +303,7 @@ export default function Test(): JSX.Element {
             <div className="flex flex-col">
               <Switch label="LLM etkileşim senaryoları" checked={options.aiScenarios} disabled={running || !hasModel} onChange={(_, d) => set('aiScenarios', d.checked)} />
               {elementor && <Switch label="Elementor editörünü de test et" checked={options.editor} disabled={running} onChange={(_, d) => set('editor', d.checked)} />}
+              <Switch label="Görsel benzerlik puanı (1500 üzerinden, 750 altı hata)" checked={options.visual !== false} disabled={running} onChange={(_, d) => set('visual', d.checked)} />
               <Switch label="Test bitince siteyi açık tut" checked={options.keepAlive} disabled={running} onChange={(_, d) => set('keepAlive', d.checked)} />
             </div>
           </div>
@@ -349,9 +374,29 @@ export default function Test(): JSX.Element {
                 <MessageBar intent="warning" className="mt-2">
                   <MessageBarBody style={{ whiteSpace: 'pre-wrap' }}>
                     {runtime.problems.join('\n')}
-                    {'\n\n'}Proje klasöründe <span style={MONO}>npm run setup:runtime</span> çalıştırıp yenileyin.
                   </MessageBarBody>
                 </MessageBar>
+              )}
+              {!runtime.ok && (
+                <div className="mt-2 flex flex-col gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button appearance="primary" icon={setup ? <Spinner size="tiny" /> : <ArrowDownloadRegular />} disabled={!!setup || running} onClick={() => void installRuntime()}>
+                      Test ortamını kur
+                    </Button>
+                    {setup && (
+                      <Button icon={<DismissRegular />} onClick={() => void window.legt.wptest.cancelSetup()}>
+                        İptal
+                      </Button>
+                    )}
+                    <Caption1>Portable XAMPP + WordPress + Elementor indirilir (yaklaşık 300-400 MB, bir kez).</Caption1>
+                  </div>
+                  {setup && (
+                    <div className="flex flex-col gap-1">
+                      <Caption1>{setup.message}</Caption1>
+                      <ProgressBar value={setup.percent === null ? undefined : setup.percent / 100} />
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -382,6 +427,62 @@ export default function Test(): JSX.Element {
                 ))}
             </div>
           </div>
+        </Card>
+      )}
+
+      {report?.visual && !running && (
+        <Card>
+          <CardHeader
+            header={
+              <div className="flex items-center gap-2">
+                <Subtitle2>Görsel benzerlik</Subtitle2>
+                <Badge color={report.visual.verdict === 'fail' ? 'danger' : report.visual.verdict === 'warn' ? 'warning' : 'success'}>
+                  {report.visual.score} / {report.visual.max}
+                </Badge>
+              </div>
+            }
+            description={
+              <Caption1>
+                {report.visual.verdict === 'fail' ? `${report.visual.threshold} eşiğinin altında: hata` : report.visual.verdict === 'warn' ? 'Eşik geçildi, hedef 1050+' : 'Kaynağa çok yakın'}
+                {report.visual.patches > 0 && ` · ${report.visual.patches} CSS kuralı otomatik yazıldı`}
+              </Caption1>
+            }
+          />
+          <Table size="small">
+            <TableHeader>
+              <TableRow>
+                <TableHeaderCell>Bölüm</TableHeaderCell>
+                <TableHeaderCell>Pencere</TableHeaderCell>
+                <TableHeaderCell>Toplam</TableHeaderCell>
+                <TableHeaderCell>Piksel /500</TableHeaderCell>
+                <TableHeaderCell>Yerleşim /400</TableHeaderCell>
+                <TableHeaderCell>Tipografi /250</TableHeaderCell>
+                <TableHeaderCell>Renk /200</TableHeaderCell>
+                <TableHeaderCell>İçerik /150</TableHeaderCell>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {report.visual.sections.map((s) => (
+                <TableRow key={`${s.sectionId}-${s.viewport}`}>
+                  <TableCell>{s.label}</TableCell>
+                  <TableCell>{s.viewport}</TableCell>
+                  <TableCell>
+                    <Badge appearance="tint" color={s.total < report.visual!.threshold ? 'danger' : s.total < 1050 ? 'warning' : 'success'}>
+                      {s.total}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{s.pixel}</TableCell>
+                  <TableCell>{s.layout}</TableCell>
+                  <TableCell>{s.type}</TableCell>
+                  <TableCell>{s.color}</TableCell>
+                  <TableCell>{s.content}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          {report.visual.pages.length > 0 && (
+            <Caption1>Tam sayfa (referans ekran görüntüsü): {report.visual.pages.map((p) => `${p.viewport} ${p.score}`).join(' · ')}</Caption1>
+          )}
         </Card>
       )}
 

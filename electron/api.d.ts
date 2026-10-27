@@ -2,6 +2,23 @@
 import type { GenEvent, IntakeInput, IntakeSource, LLMSettings, ModelInfo, OllamaEvent, OllamaStatus, Plan, PreAnalysis, ProjectMeta, ProjectState, QualityItem, RuntimeStatus, TestEvent, TestOptions, TestReport, ValidationIssue } from '../core/types'
 
 import type { PluginInfo, ProviderInfo } from '../core/plugins/types'
+import type { UrlScan } from '../core/types'
+
+export type { UrlScan }
+
+export interface VisionStatus {
+  ok: boolean
+  provider: string
+  /** Ekran görüntüsü için kullanılacak model (ok ise) */
+  model: string
+  /** Veri bilgisayardan çıkar (bulut sağlayıcı) */
+  remote: boolean
+  installedVision: string[]
+  suggestions: { name: string; label: string; note: string }[]
+  reason?: 'ollama-down' | 'no-vision-model' | 'provider-no-vision'
+}
+
+export type ScreenshotResult = { ok: true; scan: UrlScan } | { ok: false; reason: 'ollama-down' | 'no-vision-model' | 'provider-no-vision' | 'cancelled' | 'error'; message: string }
 import type { FolderScan } from '../core/types'
 
 export type { ProjectMeta, ProjectState }
@@ -29,6 +46,13 @@ export interface LegtApi {
     pickSources(): Promise<IntakeSource[]>
     /** Site klasörü seçtirir (public_html vb.), HTML/CSS/JS'i toplar; iptalde null */
     pickFolder(): Promise<FolderScan | null>
+    /** Site adresini gerçek tarayıcıda açar: render edilmiş HTML + CSS + görseller + referans ekran görüntüleri */
+    fromUrl(url: string): Promise<UrlScan>
+    /** Ekran görüntüsü seçtirir, görsel destekli modelle HTML'e çevirir */
+    fromScreenshot(): Promise<ScreenshotResult>
+    visionStatus(): Promise<VisionStatus>
+    cancel(): Promise<void>
+    onEvent(cb: (e: { message: string }) => void): () => void
   }
   settings: {
     get(): Promise<LLMSettings>
@@ -80,6 +104,10 @@ export interface LegtApi {
   wptest: {
     /** Portable XAMPP / WordPress / Elementor hazır mı */
     status(projectId: string): Promise<RuntimeStatus>
+    /** Portable XAMPP + WordPress + Elementor'u indirip kurar (yaklaşık 300-400 MB); ilerleme onSetupEvent'ten */
+    setupRuntime(): Promise<void>
+    cancelSetup(): Promise<void>
+    onSetupEvent(cb: (e: { step: string; message: string; percent: number | null }) => void): () => void
     /** Canlı WordPress testi (+ seçili LLM ile senaryo ve onarım); olaylar llm.onEvent'ten 'test' tipinde gelir */
     run(projectId: string, options: TestOptions): Promise<TestReport>
     report(projectId: string): Promise<TestReport | null>

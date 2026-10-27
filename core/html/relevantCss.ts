@@ -53,7 +53,7 @@ export function parseCss(css: string): CssRule[] {
   return rules
 }
 
-function serialize(rules: CssRule[]): string {
+export function serializeRules(rules: CssRule[]): string {
   const out: string[] = []
   let currentMedia: string | null = null
   for (const r of rules) {
@@ -77,8 +77,14 @@ const GLOBAL_SELECTOR = /^(:root|html|body|\*|[a-z][a-z0-9]*|h[1-6]|::?[a-z-]+|\
 export function relevantCss(css: string, scope: { html: string } | 'global'): string {
   const rules = parseCss(css)
   if (scope === 'global') {
-    return serialize(rules.filter((r) => r.selector === '@font-face' || r.selector.split(',').every((s) => GLOBAL_SELECTOR.test(s.trim()))))
+    return serializeRules(rules.filter((r) => r.selector === '@font-face' || r.selector.split(',').every((s) => GLOBAL_SELECTOR.test(s.trim()))))
   }
+  return serializeRules(relevantRules(css, scope))
+}
+
+/** Bölümdeki bir class/id'ye başvuran kurallar (kural düzeyinde; widget CSS'i kapsamlamak için) */
+export function relevantRules(css: string, scope: { html: string }): CssRule[] {
+  const rules = parseCss(css)
   const classes = new Set<string>()
   const ids = new Set<string>()
   for (const m of scope.html.matchAll(/\sclass\s*=\s*["']([^"']*)["']/g)) m[1].split(/\s+/).filter(Boolean).forEach((c) => classes.add(c))
@@ -88,7 +94,7 @@ export function relevantCss(css: string, scope: { html: string } | 'global'): st
     for (const m of sel.matchAll(/#(-?[_a-zA-Z][\w-]*)/g)) if (ids.has(m[1])) return true
     return false
   }
-  return serialize(rules.filter((r) => r.selector !== '@font-face' && hit(r.selector)))
+  return rules.filter((r) => r.selector !== '@font-face' && hit(r.selector))
 }
 
 /** LLM bağlamı için HTML'i küçültür: SVG yolları, data URI'ler, fazla boşluk */

@@ -256,6 +256,14 @@ function demoContent(plan: Plan, pre: PreAnalysis): string {
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 return array(
+	'menus'      => array(
+		'primary' => array(
+${(d.menus?.primary ?? []).map((l) => `			array( 'title' => ${phpStr(l.title)}, 'url' => ${phpStr(l.url)} ),`).join('\n')}
+		),
+		'footer'  => array(
+${(d.menus?.footer ?? []).map((l) => `			array( 'title' => ${phpStr(l.title)}, 'url' => ${phpStr(l.url)} ),`).join('\n')}
+		),
+	),
 	'categories' => array(
 ${d.categories.map((c) => `		${phpStr(c)},`).join('\n')}
 	),

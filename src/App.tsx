@@ -29,6 +29,18 @@ export default function App(): JSX.Element {
     void refreshProjects()
   }, [refreshProjects])
 
+  // Alt bileşenlerden (ör. Intake > görsel model yardımı) ayarları / Ollama kurulumunu aç
+  useEffect(() => {
+    const settings = (): void => setSettingsOpen(true)
+    const ollama = (): void => setSetupOpen(true)
+    window.addEventListener('legt:open-settings', settings)
+    window.addEventListener('legt:open-ollama', ollama)
+    return () => {
+      window.removeEventListener('legt:open-settings', settings)
+      window.removeEventListener('legt:open-ollama', ollama)
+    }
+  }, [])
+
   // Yerel Ollama kurulu değilse, çalışmıyorsa ya da modeli yoksa kurulum ekranı kendiliğinden açılır
   useEffect(() => {
     void (async () => {

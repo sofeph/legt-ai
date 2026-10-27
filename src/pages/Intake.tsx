@@ -23,7 +23,9 @@ import {
   Text,
   Textarea
 } from '@fluentui/react-components'
-import { DismissRegular, DocumentRegular, FolderOpenRegular, GlobeRegular, SparkleRegular } from '@fluentui/react-icons'
+import { DismissRegular, DocumentRegular, FolderOpenRegular, GlobeRegular, ImageRegular, SparkleRegular } from '@fluentui/react-icons'
+import type { VisionStatus } from '../../electron/api'
+import { VisionHelp } from '../components/VisionHelp'
 import { PREFIX_RE, type IntakeInput, type IntakeSource, type Mode, type PreAnalysis } from '../../core/types'
 import { useProject } from '../store/project'
 
@@ -61,6 +63,59 @@ export default function Intake(): JSX.Element {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [folder, setFolder] = useState<{ root: string; warnings: string[]; skipped: string[] } | null>(null)
+
+  const [siteUrl, setSiteUrl] = useState('')
+  const [capture, setCapture] = useState<string | null>(null)
+  const [vision, setVision] = useState<VisionStatus | null>(null)
+  const [visionOpen, setVisionOpen] = useState(false)
+
+  useEffect(() => window.legt.html.onEvent((e) => setCapture((c) => (c === null ? c : e.message))), [])
+
+  /** Site adresi ya da ekran görüntüsünden gelen kaynaklar önceki kaynakların yerini alır */
+  const applyScan = (scan: { url: string; title: string; sources: IntakeSource[]; warnings: string[] }): void => {
+    setFiles(scan.sources)
+    setPasted('')
+    setFolder({ root: scan.url, warnings: scan.warnings, skipped: [] })
+    if (!name.trim() && scan.title) setName(scan.title.slice(0, 60))
+  }
+
+  const fetchUrl = async (): Promise<void> => {
+    setError(null)
+    setCapture('Başlıyor…')
+    try {
+      applyScan(await window.legt.html.fromUrl(siteUrl))
+    } catch (e) {
+      setError((e as Error).message.replace(/^Error invoking remote method '[^']+': (Error: )?/, ''))
+    } finally {
+      setCapture(null)
+    }
+  }
+
+  const fromScreenshot = async (): Promise<void> => {
+    setError(null)
+    const status = await window.legt.html.visionStatus()
+    if (!status.ok) {
+      setVision(status)
+      setVisionOpen(true)
+      return
+    }
+    setCapture(`${status.model} hazırlanıyor…`)
+    try {
+      const res = await window.legt.html.fromScreenshot()
+      if (res.ok) applyScan(res.scan)
+      else if (res.reason !== 'cancelled') {
+        if (res.reason === 'error') setError(res.message)
+        else {
+          setVision({ ...status, ok: false, reason: res.reason })
+          setVisionOpen(true)
+        }
+      }
+    } catch (e) {
+      setError((e as Error).message.replace(/^Error invoking remote method '[^']+': (Error: )?/, ''))
+    } finally {
+      setCapture(null)
+    }
+  }
 
   const pickFolder = async (): Promise<void> => {
     const scan = await window.legt.html.pickFolder()
@@ -192,13 +247,34 @@ export default function Intake(): JSX.Element {
               </div>
             }
           />
+          <div className="flex flex-wrap items-end gap-2">
+            <Field label="Site adresi" className="min-w-[260px] flex-1" hint="Yalnızca hakkınız olan siteler. Sayfa tarayıcıda açılıp render edilmiş hâliyle alınır; ekran görüntüleri görsel benzerlik puanında referans olur.">
+              <Input value={siteUrl} placeholder="https://ornek.com" disabled={capture !== null} onChange={(_, d) => setSiteUrl(d.value)} onKeyDown={(e) => e.key === 'Enter' && siteUrl.trim() && void fetchUrl()} />
+            </Field>
+            <Button icon={<GlobeRegular />} disabled={!siteUrl.trim() || capture !== null} onClick={() => void fetchUrl()}>
+              Siteyi getir
+            </Button>
+            <Button icon={<ImageRegular />} disabled={capture !== null} onClick={() => void fromScreenshot()}>
+              Ekran görüntüsünden
+            </Button>
+            {capture !== null && (
+              <div className="flex items-center gap-2">
+                <Spinner size="tiny" />
+                <Caption1>{capture}</Caption1>
+                <Button size="small" onClick={() => void window.legt.html.cancel()}>
+                  İptal
+                </Button>
+              </div>
+            )}
+          </div>
+          <VisionHelp open={visionOpen} status={vision} onClose={() => setVisionOpen(false)} onReady={() => { setVisionOpen(false); void fromScreenshot() }} />
           {folder && (
             <MessageBar intent={folder.warnings.length ? 'warning' : 'info'}>
               <MessageBarBody>
                 <div className="flex items-center gap-1">
                   <GlobeRegular /> <span style={{ fontFamily: 'Consolas, "Cascadia Code", monospace' }}>{folder.root}</span>
                 </div>
-                {files.filter((f) => f.kind === 'html').length} sayfa, {files.filter((f) => f.kind === 'css').length} CSS, {files.filter((f) => f.kind === 'js').length} JS, {files.filter((f) => f.kind === 'media').length} medya alındı
+                {files.filter((f) => f.kind === 'html').length} sayfa, {files.filter((f) => f.kind === 'css').length} CSS, {files.filter((f) => f.kind === 'js').length} JS, {files.filter((f) => f.kind === 'media' && !f.name.startsWith('_ref/')).length} medya alındı
                 {folder.skipped.length > 0 && ` · ${folder.skipped.length} dosya atlandı`}
                 {folder.warnings.map((w) => (
                   <div key={w}>{w}</div>
@@ -216,9 +292,9 @@ export default function Intake(): JSX.Element {
                   </Badge>
                 )
               )}
-              {files.some((f) => f.kind === 'media') && (
+              {files.some((f) => f.kind === 'media' && !f.name.startsWith('_ref/')) && (
                 <Badge appearance="tint" icon={<DismissRegular onClick={() => setFiles(files.filter((f) => f.kind !== 'media'))} />} iconPosition="after">
-                  {files.filter((f) => f.kind === 'media').length} medya dosyası (temaya ve Medya Kütüphanesi'ne)
+                  {files.filter((f) => f.kind === 'media' && !f.name.startsWith('_ref/')).length} medya dosyası (temaya ve Medya Kütüphanesi'ne)
                 </Badge>
               )}
             </div>

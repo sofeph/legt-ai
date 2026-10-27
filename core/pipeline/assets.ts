@@ -49,7 +49,8 @@ export async function completeAssets(projectDir: string, plan: Plan): Promise<As
   const output = join(projectDir, 'output')
   const roots = [themeDir(plan), ...(plan.mode === 'elementor-free' ? [pluginDir(plan)] : [])]
   const sourcesDir = join(projectDir, 'sources')
-  const sources = (await walk(sourcesDir)).filter((f) => MEDIA_RE.test(f))
+  // sources/_ref: görsel birebirlik için referans ekran görüntüleri; temaya paketlenmez
+  const sources = (await walk(sourcesDir)).filter((f) => MEDIA_RE.test(f) && !/[\\/]_ref[\\/]/.test(f))
   const byName = new Map(sources.map((f) => [basename(f).toLowerCase(), f]))
   const report: AssetReport = { copied: [], placeholders: [], bundled: [] }
   const done = new Set<string>()

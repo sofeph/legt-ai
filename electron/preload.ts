@@ -9,7 +9,16 @@ const api: LegtApi = {
   html: {
     preAnalyze: (sources) => invoke('html:preAnalyze', sources),
     pickSources: () => invoke('html:pickSources'),
-    pickFolder: () => invoke('html:pickFolder')
+    pickFolder: () => invoke('html:pickFolder'),
+    fromUrl: (url) => invoke('html:fromUrl', url),
+    fromScreenshot: () => invoke('html:fromScreenshot'),
+    visionStatus: () => invoke('vision:status'),
+    cancel: () => invoke('intake:cancel'),
+    onEvent: (cb) => {
+      const listener = (_: unknown, e: { message: string }): void => cb(e)
+      ipcRenderer.on('intake:event', listener)
+      return () => ipcRenderer.removeListener('intake:event', listener)
+    }
   },
   settings: {
     get: () => invoke('settings:get'),
@@ -62,6 +71,13 @@ const api: LegtApi = {
   },
   wptest: {
     status: (id) => invoke('wptest:status', id),
+    setupRuntime: () => invoke('wptest:setupRuntime'),
+    cancelSetup: () => invoke('wptest:cancelSetup'),
+    onSetupEvent: (cb) => {
+      const listener = (_: unknown, e: { step: string; message: string; percent: number | null }): void => cb(e)
+      ipcRenderer.on('runtime:event', listener)
+      return () => ipcRenderer.removeListener('runtime:event', listener)
+    },
     run: (id, options) => invoke('projects:test', id, options),
     report: (id) => invoke('wptest:report', id),
     shot: (id, file) => invoke('wptest:shot', id, file),

@@ -61,9 +61,20 @@ Ollama kurulu değilse, çalışmıyorsa ya da modeli yoksa uygulama açılışt
 
 Üretilen eklenti **Görünüm > {Tema} Demo** sayfasıyla gelir: tek tıkla ana sayfa, header/footer layout'ları, ana menü ve Elementor global renk/fontları kurulur (WP-CLI: `wp {önek} demo-import`).
 
+## Site adresi ve ekran görüntüsünden tema
+
+HTML'iniz yoksa Kaynak ekranından iki yol daha var:
+
+- **Site adresi:** sayfa gerçek tarayıcıda açılır; render edilmiş HTML, CSS ve görseller alınır, üç pencerede (masaüstü / tablet / mobil) tam sayfa ekran görüntüsü referans olarak saklanır. Yalnızca hakkınız olan siteleri kullanın; JavaScript çalıştırılmış hâliyle alınır.
+- **Ekran görüntüsü:** görsel destekli bir model görüntüyü tek dosyalık HTML+CSS'e çevirir, sonra normal akış sürer. Görsel model yoksa uygulama yönlendirir: yerel model indirme (ör. `qwen2.5vl:7b`, ana kod modeli değişmez) ya da görsel girdiyi destekleyen bir bulut sağlayıcı eklentisi (veri bilgisayardan çıkar).
+
+## Görsel benzerlik puanı
+
+Canlı test, kaynak sayfayla üretilen siteyi aynı pencerelerde ölçer ve **1500 puan** üzerinden puanlar: piksel 500 · yerleşim 400 · tipografi 250 · renk 200 · içerik 150. **750 altı hata**, 1050 altı uyarıdır. Yazı boyutu, kalınlık, satır yüksekliği, renk, arka plan, yuvarlama gibi stil sapmaları LLM'siz CSS kuralına çevrilip widget CSS'ine yazılır (Elementor modu); kalan sapmalar ölçüleriyle onarım istemine gider. Sonuç Test ekranında bölüm ve pencere bazında görünür.
+
 ## Canlı test (son kontrol)
 
-Üretimden sonra **4. Test** ekranı temayı (ve Elementor modunda eklentiyi) portable XAMPP üzerinde gerçek bir WordPress'e kurar ve Playwright ile masaüstü / tablet / mobilde gezer. Seçili model etkileşim senaryoları yazar (menü, slider, SSS…), bulunan her sorun ilgili dosyaya bağlanır ve model o dosyayı onarır; site yeniden kurulup test tekrarlanır. Her test rastgele portlarla, geçici bir veritabanıyla çalışır; kendi XAMPP'ınız ya da 80/3306 portlarınız etkilenmez.
+Test ortamı yoksa **4. Test** ekranındaki **Test ortamını kur** düğmesi portable XAMPP, WordPress ve Elementor'u indirip kurar (yaklaşık 300-400 MB, bir kez; npm gerekmez). Üretimden sonra **4. Test** ekranı temayı (ve Elementor modunda eklentiyi) portable XAMPP üzerinde gerçek bir WordPress'e kurar ve Playwright ile masaüstü / tablet / mobilde gezer. Seçili model etkileşim senaryoları yazar (menü, slider, SSS…), bulunan her sorun ilgili dosyaya bağlanır ve model o dosyayı onarır; site yeniden kurulup test tekrarlanır. Her test rastgele portlarla, geçici bir veritabanıyla çalışır; kendi XAMPP'ınız ya da 80/3306 portlarınız etkilenmez.
 
 ```bash
 npm run setup:runtime   # bir kez: runtime/ altına portable XAMPP, WordPress, Elementor, Chromium

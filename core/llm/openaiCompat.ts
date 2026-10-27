@@ -1,5 +1,6 @@
 import type { LLMSettings, ModelInfo } from '../types'
 import { parseParamsB, readLines, type ChatRequest, type LLMProvider } from './provider'
+import { imageMime } from './vision'
 
 /** LM Studio, llama.cpp server, vLLM vb. /v1 uyumlu yerel endpoint'ler */
 export class OpenAICompatProvider implements LLMProvider {
@@ -30,7 +31,11 @@ export class OpenAICompatProvider implements LLMProvider {
       signal: req.signal,
       body: JSON.stringify({
         model: this.settings.model,
-        messages: req.messages,
+        messages: req.messages.map((m) =>
+          m.images?.length
+            ? { role: m.role, content: [{ type: 'text', text: m.content }, ...m.images.map((b64) => ({ type: 'image_url', image_url: { url: `data:${imageMime(b64)};base64,${b64}` } }))] }
+            : { role: m.role, content: m.content }
+        ),
         temperature: req.temperature,
         stream: true,
         ...(req.json ? { response_format: { type: 'json_object' } } : {})

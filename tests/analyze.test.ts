@@ -67,3 +67,18 @@ describe('analyze', () => {
     await expect(analyze({ provider: p, promptsDir, scaffoldDir, input, pre })).rejects.toBeInstanceOf(PlanValidationError)
   })
 })
+
+describe('repairRefs', () => {
+  const sec = (id: string, role: string, classes: string[], headings: string[] = []) => ({ id, tag: 'section', role, classes, headings, textSamples: [], images: 0, links: 0, buttons: 0, forms: 0, repeated: null, jsHints: [], html: '' }) as never
+  const pre = { sections: [sec('section-1', 'header', ['site-header']), sec('section-2', 'content', ['hero-area']), sec('section-3', 'content', ['pricing-wrap'], ['Fiyatlar']), sec('section-4', 'footer', ['footer'])], tokens: {} } as never
+  it('bölüm adını, Section N biçimini ve sırayı section-N’e çevirir', async () => {
+    const { repairRefs } = await import('@core/pipeline/analyze')
+    const plan = { sections: [{ id: 'header', htmlRef: 'header', widget: 'x-header' }, { id: 'hero', htmlRef: 'hero', widget: 'x-hero' }, { id: 'p', htmlRef: 'Section 3', widget: 'x-pricing' }, { id: 'f', htmlRef: 'xyz', widget: 'x-qq' }] }
+    expect(repairRefs(plan, pre)).toBe(4)
+    expect(plan.sections.map((s) => s.htmlRef)).toEqual(['section-1', 'section-2', 'section-3', 'section-4'])
+  })
+  it('geçerli referanslara dokunmaz', async () => {
+    const { repairRefs } = await import('@core/pipeline/analyze')
+    expect(repairRefs({ sections: [{ id: 'a', htmlRef: 'section-2' }] }, pre)).toBe(0)
+  })
+})

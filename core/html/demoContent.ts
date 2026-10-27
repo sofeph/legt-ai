@@ -1,11 +1,33 @@
 import * as cheerio from 'cheerio'
-import type { DemoContent, DemoPost, IntakeSource } from '../types'
+import type { DemoContent, DemoLink, DemoPost, IntakeSource } from '../types'
 
 const MAX_POSTS = 12
 const MAX_CATEGORIES = 8
 const CARD = 'article, [class*="post"], [class*="card"], [class*="blog"], [class*="entry"]'
 
 const text = (s: string): string => s.replace(/\s+/g, ' ').trim()
+
+const MAX_LINKS = 12
+
+/** Bir bölgedeki gezinme bağlantıları: kısa metinli, tekrarsız, javascript: olmayan */
+function navLinks($: cheerio.CheerioAPI, root: ReturnType<cheerio.CheerioAPI>): DemoLink[] {
+  const out: DemoLink[] = []
+  const seen = new Set<string>()
+  root.find('a[href]').each((_, el) => {
+    if (out.length >= MAX_LINKS) return
+    const a = $(el)
+    const title = text(a.text())
+    const url = (a.attr('href') ?? '').trim()
+    if (title.length < 2 || title.length > 30 || /^(javascript:|data:)/i.test(url) || /^(tel:|mailto:)/i.test(url) && out.length === 0) return
+    // Düğme görünümlü bağlantılar (CTA) menü öğesi değil
+    if (/\b(btn|button|cta|theme-btn)\b/i.test(a.attr('class') ?? '')) return
+    const key = title.toLowerCase() + '|' + url
+    if (seen.has(key)) return
+    seen.add(key)
+    out.push({ title, url })
+  })
+  return out
+}
 
 /**
  * Örnek HTML'deki yazı/kart öğelerinden demo yazıları ve kategorileri çıkarır (LLM'siz).
@@ -14,9 +36,20 @@ const text = (s: string): string => s.replace(/\s+/g, ' ').trim()
 export function extractDemoContent(sources: IntakeSource[]): DemoContent {
   const posts: DemoPost[] = []
   const seen = new Set<string>()
+  const menus: { primary: DemoLink[]; footer: DemoLink[] } = { primary: [], footer: [] }
   for (const src of sources) {
     if (src.kind !== 'html') continue
     const $ = cheerio.load(src.content)
+    // Menüler: ilk sayfadaki header/nav ve footer bağlantıları
+    if (!menus.primary.length) {
+      const nav = $('header nav, nav').first()
+      menus.primary = navLinks($, nav.length ? nav : $('header').first())
+    }
+    if (!menus.footer.length) {
+      const foot = $('footer').first()
+      const lists = foot.find('ul')
+      menus.footer = navLinks($, lists.length ? lists : foot)
+    }
     $(CARD).each((_, el) => {
       if (posts.length >= MAX_POSTS) return
       const $el = $(el)
@@ -39,5 +72,5 @@ export function extractDemoContent(sources: IntakeSource[]): DemoContent {
     })
   }
   const categories = [...new Set(posts.map((p) => p.category).filter(Boolean))].slice(0, MAX_CATEGORIES)
-  return { posts, categories }
+  return { posts, categories, menus }
 }
